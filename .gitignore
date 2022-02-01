@@ -1,0 +1,10 @@
+.idea/
+
+/data/
+
+__pycache__/
+
+
+/0*.py
+/0*.ipynb
+/test.py

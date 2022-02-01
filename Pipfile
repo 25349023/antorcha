@@ -1,0 +1,18 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+numpy = "*"
+torch = {file = "https://download.pytorch.org/whl/cu113/torch-1.10.1%2Bcu113-cp39-cp39-win_amd64.whl"}
+torchvision = {file = "https://download.pytorch.org/whl/cu113/torchvision-0.11.2%2Bcu113-cp39-cp39-win_amd64.whl"}
+tqdm = "*"
+
+[dev-packages]
+matplotlib = "*"
+notebook = "*"
+jupyter = "*"
+
+[requires]
+python_version = "3.9"
