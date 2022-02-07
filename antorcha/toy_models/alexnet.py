@@ -6,6 +6,8 @@ from .basic_nn import CNN as _CNN, MLP as _MLP
 
 
 class TinyAlexNet(_nn.Module):
+    metric_names = ['Accuracy']
+
     def __init__(self, in_shape):
         super().__init__()
         cnn_param = _CNNParams(
@@ -21,8 +23,6 @@ class TinyAlexNet(_nn.Module):
             out_features=[4096, 4096, 10], bad_setting=_Bad(activation=_nn.ReLU)
         )
         self.mlp = _MLP(mlp_param)
-
-        self.metric_names = ['Accuracy']
 
     def forward(self, x):
         x = self.cnn(x)

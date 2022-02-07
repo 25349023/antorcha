@@ -114,6 +114,8 @@ class AutoEncoder(_nn.Module):
 
 
 class VariationalAutoEncoder(_nn.Module):
+    metric_names = ['Reconstruct Loss', 'KL Divergence']
+
     def __init__(self, encoder_params: _Params, decoder_params: _Params, auto_shape=False, r_factor=1000):
         """
         :param encoder_params:
@@ -133,8 +135,6 @@ class VariationalAutoEncoder(_nn.Module):
         self.r_factor = r_factor
         self.r_loss = _torch.tensor(0.0)
         self.kl_div = _torch.tensor(0.0)
-
-        self.metric_names = ['Reconstruct Loss', 'KL Divergence']
 
     def forward(self, x):
         z = self.encoder(x)
