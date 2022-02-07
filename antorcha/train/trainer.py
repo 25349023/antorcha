@@ -29,7 +29,7 @@ def test_one_epoch(
         model: _nn.Module,
         dataset: _abc.Iterable,
         loss_fns: list,
-        metrics=True
+        metrics=False
 ):
     losses, metric_results = [], []
     with _torch.no_grad():
@@ -41,8 +41,10 @@ def test_one_epoch(
                 metric_results.append(model.metrics(pred, y))
 
     if metrics:
+        # transposing the result matrix
         metric_results = zip(*metric_results)
         metric_results = tuple(_np.array(m).mean() for m in metric_results)
+
     return _np.array(losses).mean(), *metric_results
 
 
@@ -52,7 +54,7 @@ def fit(
         test_ld: _abc.Iterable,
         loss_fn,
         optim: _torch.optim.Optimizer,
-        metrics,
+        metrics=False,
         scheduler=None,
         epochs=20,
 ):
