@@ -47,6 +47,13 @@ class GeneratorParams(_NamedTuple):
     z_dim: int
 
 
+class GANParams(_NamedTuple):
+    gen_params: GeneratorParams
+    dis_params: CNNParams
+    gen_learning_rate: float
+    dis_learning_rate: float
+
+
 def symmetric_params(ec_params: CoderParams):
     net_p = ec_params.net_params
 
