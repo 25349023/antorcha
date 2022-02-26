@@ -1,19 +1,19 @@
-import functools as _funct
+from functools import wraps as _wraps, partial as _partial
 
 from torch import nn as _nn
 
 
-def append_pbad_layers(cls=None, *, bn_layer=None):
-    """ Append Pooling BatchNorm, Activation, Dropout layers after `self.layers` """
+def append_bad_layers(cls=None, *, bn_layer=None):
+    """ Append BatchNorm, Activation, Dropout layers after `self.layers` """
     if cls is None:
-        return _funct.partial(append_pbad_layers, bn_layer=bn_layer)
+        return _partial(append_bad_layers, bn_layer=bn_layer)
 
     init = cls.__init__
 
+    @_wraps(init)
     def __init__(
             self,
             *args,
-            pooling=None,
             batchnorm=False,
             activation=None,
             dropout=0,
@@ -23,10 +23,6 @@ def append_pbad_layers(cls=None, *, bn_layer=None):
 
         # Assumes that the second element of args is out_channels.
         out_channels = args[1]
-
-        if pooling is not None:
-            self.pooling = pooling
-            self.layers.append(self.pooling)
 
         if batchnorm:
             if bn_layer is None:
@@ -47,6 +43,8 @@ def append_pbad_layers(cls=None, *, bn_layer=None):
 
 
 def sequential_forward(cls):
+    """Adding `forward` method that simply forwards through `self.layers`"""
+
     def forward(self, x):
         for layer in self.layers:
             x = layer(x)

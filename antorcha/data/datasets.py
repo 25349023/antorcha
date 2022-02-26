@@ -2,6 +2,7 @@ import numpy as _np
 from torch.utils import data as _data
 
 
+# [TODO] Generalize this to Doodle Dataset
 class CamelDataset(_data.Dataset):
     def __init__(self, transform=None, train=True):
         self.data = _np.load('data/camel/full_numpy_bitmap_camel.npy')

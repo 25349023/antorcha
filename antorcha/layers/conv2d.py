@@ -2,7 +2,7 @@ from collections.abc import Sequence
 
 from torch import nn as _nn
 
-from .util import sequential_forward, append_pbad_layers
+from .util import sequential_forward, append_bad_layers
 from ..utils.aux_types import square_2d
 
 __all__ = ['autopad_conv2d', 'autopad_conv_transpose2d', 'AutoConv2d', 'AutoConvTranspose2d']
@@ -41,7 +41,7 @@ def autopad_conv_transpose2d(
 
 
 @sequential_forward
-@append_pbad_layers(bn_layer=_nn.BatchNorm2d)
+@append_bad_layers(bn_layer=_nn.BatchNorm2d)
 class AutoConv2d(_nn.Module):
     def __init__(
             self,
@@ -63,7 +63,7 @@ class AutoConv2d(_nn.Module):
 
 
 @sequential_forward
-@append_pbad_layers(bn_layer=_nn.BatchNorm2d)
+@append_bad_layers(bn_layer=_nn.BatchNorm2d)
 class AutoConvTranspose2d(_nn.Module):
     def __init__(
             self,

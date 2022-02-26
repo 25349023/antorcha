@@ -83,7 +83,7 @@ class GenerativeAdversarialNetwork(_nn.Module):
         loss_fake = self.loss_fn(dis_fake_out, zeros)
         loss_real = self.loss_fn(dis_real_out, ones)
 
-        return loss_fake + loss_real
+        return 0.5 * (loss_fake + loss_real)
 
     def train_dis(self, real_imgs):
         self.dis_opt.zero_grad()

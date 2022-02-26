@@ -38,6 +38,8 @@ def test_adv_one_epoch(
     return tuple(_np.array(loss).mean() for loss in losses)
 
 
+# [TODO] adding support for lr scheduler
+# [TODO] adding metric support?
 def fit_adv(
         model: _gans.GenerativeAdversarialNetwork,
         train_ld: _Iterable,

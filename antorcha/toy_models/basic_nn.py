@@ -93,7 +93,7 @@ class TransposedCNN(_nn.Module):
 class UpSamplingCNN(_nn.Module):
     def __init__(self, params: _util.CNNParams):
         """
-        Construct a multi-layer Transposed Convolutional Neural Network
+        Construct a multi-layer Upsampling Convolutional Neural Network
 
         The bad settings for the last layer defaults to:
             no BN, `nn.Sigmoid` activation function, no Dropout
