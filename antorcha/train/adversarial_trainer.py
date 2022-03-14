@@ -6,8 +6,6 @@ import torch as _torch
 import tqdm as _tqdm
 from torch import nn as _nn
 
-from antorcha.toy_models import gans as _gans
-
 
 def train_adv_one_epoch(
         model: _nn.Module,
@@ -15,12 +13,14 @@ def train_adv_one_epoch(
 ):
     losses = [[] for _ in range(len(model.loss_names))]
 
-    for (x,) in _tqdm.tqdm(dataset, file=_sys.stdout, desc='Training... ', leave=False):
+    dataset = _tqdm.tqdm(dataset, file=_sys.stdout, desc='Training... ', leave=False)
+    for (x,) in dataset:
         batch_loss = model.train_adv(x)
         for b_loss, loss in zip(batch_loss, losses):
             loss.append(b_loss)
 
-    return tuple(_np.array(loss).mean() for loss in losses)
+    return tuple(_np.nanmean(_np.array(loss, dtype=_np.float))
+                 for loss in losses)
 
 
 def test_adv_one_epoch(
@@ -30,7 +30,8 @@ def test_adv_one_epoch(
     losses = [[] for _ in range(len(model.loss_names))]
 
     with _torch.no_grad():
-        for (x,) in _tqdm.tqdm(dataset, file=_sys.stdout, desc='Testing... ', leave=False):
+        dataset = _tqdm.tqdm(dataset, file=_sys.stdout, desc='Testing... ', leave=False)
+        for (x,) in dataset:
             batch_loss = model.test_adv(x)
             for b_loss, loss in zip(batch_loss, losses):
                 loss.append(b_loss.item())
@@ -41,7 +42,7 @@ def test_adv_one_epoch(
 # [TODO] adding support for lr scheduler
 # [TODO] adding metric support?
 def fit_adv(
-        model: _gans.GenerativeAdversarialNetwork,
+        model,
         train_ld: _Iterable,
         test_ld: _Iterable,
         epochs=30

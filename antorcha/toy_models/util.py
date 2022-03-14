@@ -54,6 +54,15 @@ class GANParams(_NamedTuple):
     dis_learning_rate: float
 
 
+class WGANParams(_NamedTuple):
+    gen_params: GeneratorParams
+    crtc_params: CNNParams
+    gen_learning_rate: float
+    crtc_learning_rate: float
+    crtc_weight_threshold: float
+    n_critic: int
+
+
 def symmetric_params(ec_params: CoderParams):
     net_p = ec_params.net_params
 
@@ -78,3 +87,15 @@ def symmetric_params(ec_params: CoderParams):
             ),
             z_dim=ec_params.z_dim
         )
+
+
+def attach_device_prop(cls):
+    def getter(self):
+        return self._device
+
+    def setter(self, value):
+        self._device = value
+        self.to(value)
+
+    cls.device = property(getter, setter)
+    return cls

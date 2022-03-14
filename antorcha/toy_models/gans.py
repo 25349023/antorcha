@@ -42,6 +42,7 @@ class Discriminator(_nn.Module):
         return x
 
 
+@_util.attach_device_prop
 class GenerativeAdversarialNetwork(_nn.Module):
     loss_names = ['D Loss', 'G Loss']
 
@@ -125,11 +126,112 @@ class GenerativeAdversarialNetwork(_nn.Module):
 
         return d_loss, g_loss
 
-    @property
-    def device(self):
-        return self._device
 
-    @device.setter
-    def device(self, value):
-        self.to(value)
-        self._device = value
+class WCritic(_nn.Module):
+    def __init__(self, params: _util.CNNParams):
+        super().__init__()
+        self.in_channel = params.in_channel
+
+        self.critic_network = _basic_nn.CNN(params)
+        self.fmap_shape = self.critic_network.fmap_shape
+        self.flatten = _nn.Flatten()
+        self.dense = _nn.Linear(self.fmap_shape ** 2 * params.out_channels[-1], 1)
+
+    def forward(self, x):
+        x = self.critic_network(x)
+        x = self.flatten(x)
+        x = self.dense(x)
+        return x
+
+
+@_util.attach_device_prop
+class WassersteinGAN(_nn.Module):
+    loss_names = ['C Loss', 'G Loss']
+
+    def __init__(self, params: _util.WGANParams):
+        super().__init__()
+        self.z_dim = params.gen_params.z_dim
+
+        self.generator = Generator(params.gen_params)
+        self.critic = WCritic(params.crtc_params)
+
+        self.gen_opt = _torch.optim.RMSprop(self.generator.parameters(), lr=params.gen_learning_rate)
+        self.crtc_opt = _torch.optim.RMSprop(self.critic.parameters(), lr=params.crtc_learning_rate)
+
+        self.n_critic = params.n_critic
+        self.crtc_weight_threshold = params.crtc_weight_threshold
+        self.steps = 1
+
+        self.device = 'cpu'
+
+    def forward(self, z):
+        fake = self.generator(z)
+        pred = self.critic(fake)
+        return fake, pred
+
+    def generate_images(self, batch_size):
+        with _torch.no_grad():
+            z = _torch.randn(batch_size, self.z_dim, device='cuda')
+            image = self.generator(z).to('cpu').numpy()
+            return image
+
+    def forward_crtc(self, real_imgs):
+        batch_size = real_imgs.shape[0]
+        z = _torch.randn(batch_size, self.z_dim, device=self.device)
+
+        fake_imgs = self.generator(z)
+        crtc_fake_out = self.critic(fake_imgs.detach())
+        crtc_real_out = self.critic(real_imgs)
+
+        loss_fake = _torch.mean(crtc_fake_out)
+        loss_real = -_torch.mean(crtc_real_out)
+
+        return 0.5 * (loss_fake + loss_real)
+
+    def train_crtc(self, real_imgs):
+        self.crtc_opt.zero_grad()
+        loss = self.forward_crtc(real_imgs)
+        loss.backward()
+        self.crtc_opt.step()
+        self.clip_crtc_weight()
+
+        return loss.mean().item()
+
+    def forward_gen(self, batch_size):
+        z = _torch.randn(batch_size, self.z_dim, device=self.device)
+
+        fake_imgs = self.generator(z)
+        crtc_fake_out = self.critic(fake_imgs)
+        loss = -_torch.mean(crtc_fake_out)
+        return loss
+
+    def train_gen(self, batch_size):
+        self.gen_opt.zero_grad()
+        loss = self.forward_gen(batch_size)
+        loss.backward()
+        self.gen_opt.step()
+        return loss.mean().item()
+
+    def clip_crtc_weight(self):
+        for param in self.critic.parameters():
+            param.data.clamp_(-self.crtc_weight_threshold, self.crtc_weight_threshold)
+
+    def train_adv(self, real_imgs):
+        batch_size = real_imgs.shape[0]
+        c_loss = self.train_crtc(real_imgs)
+
+        g_loss = None
+        if self.steps % self.n_critic == 0:
+            self.steps = 1
+            g_loss = self.train_gen(batch_size)
+
+        self.steps += 1
+
+        return c_loss, g_loss
+
+    def test_adv(self, real_imgs):
+        batch_size = real_imgs.shape[0]
+        c_loss = self.forward_crtc(real_imgs)
+        g_loss = self.forward_gen(batch_size)
+
+        return c_loss, g_loss
