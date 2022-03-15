@@ -30,7 +30,7 @@ def append_bad_layers(cls=None, *, bn_layer=None):
             self.batch_norm = bn_layer(out_channels)
             self.layers.append(self.batch_norm)
 
-        if activation is not None:
+        if activation is not None and not isinstance(activation, _nn.Identity):
             self.activation = activation
             self.layers.append(self.activation)
 

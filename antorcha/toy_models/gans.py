@@ -30,16 +30,12 @@ class Discriminator(_nn.Module):
         super().__init__()
         self.in_channel = params.in_channel
 
-        self.discriminating_network = _basic_nn.CNN(params)
-        self.fmap_shape = self.discriminating_network.fmap_shape
-        self.flatten = _nn.Flatten()
-        self.dense = _nn.Linear(self.fmap_shape ** 2 * params.out_channels[-1], 1)
+        mlp_params = _util.MLPParams(in_feature=-1, out_features=[1], bad_setting=_util.BADSettings())
+        self.discriminating_network = _basic_nn.CNNWithMLP(params, mlp_params)
         self.activation = _nn.Sigmoid()
 
     def forward(self, x):
         x = self.discriminating_network(x)
-        x = self.flatten(x)
-        x = self.dense(x)
         x = self.activation(x)
         return x
 
@@ -134,15 +130,11 @@ class WCritic(_nn.Module):
         super().__init__()
         self.in_channel = params.in_channel
 
-        self.critic_network = _basic_nn.CNN(params)
-        self.fmap_shape = self.critic_network.fmap_shape
-        self.flatten = _nn.Flatten()
-        self.dense = _nn.Linear(self.fmap_shape ** 2 * params.out_channels[-1], 1)
+        mlp_params = _util.MLPParams(in_feature=-1, out_features=[1], bad_setting=_util.BADSettings())
+        self.critic_network = _basic_nn.CNNWithMLP(params, mlp_params)
 
     def forward(self, x):
         x = self.critic_network(x)
-        x = self.flatten(x)
-        x = self.dense(x)
         return x
 
 
