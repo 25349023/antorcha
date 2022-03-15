@@ -63,6 +63,15 @@ class WGANParams(_NamedTuple):
     n_critic: int
 
 
+class WGANGPParams(_NamedTuple):
+    gen_params: GeneratorParams
+    crtc_params: CNNParams
+    gen_learning_rate: float
+    crtc_learning_rate: float
+    gp_weight: float
+    n_critic: int
+
+
 def symmetric_params(ec_params: CoderParams):
     net_p = ec_params.net_params
 

@@ -36,7 +36,7 @@ def test_adv_one_epoch(
             for b_loss, loss in zip(batch_loss, losses):
                 loss.append(b_loss.item())
 
-    return tuple(_np.array(loss).mean() for loss in losses)
+    return tuple(_np.array(loss).mean() for loss in losses if loss)
 
 
 # [TODO] adding support for lr scheduler
