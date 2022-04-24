@@ -98,7 +98,7 @@ class AutoEncoder(_nn.Module):
 
         self.encoder = Encoder(encoder_params)
         if auto_shape and isinstance(decoder_params.net_params, _CNNParams):
-            decoder_params._replace(
+            decoder_params = decoder_params._replace(
                 net_params=decoder_params.net_params._replace(
                     shape=self.encoder.fmap_shape)
             )
@@ -126,7 +126,7 @@ class VariationalAutoEncoder(_nn.Module):
 
         self.encoder = VariationalEncoder(encoder_params)
         if auto_shape and isinstance(decoder_params.net_params, _CNNParams):
-            decoder_params._replace(
+            decoder_params = decoder_params._replace(
                 net_params=decoder_params.net_params._replace(
                     shape=self.encoder.fmap_shape)
             )

@@ -277,6 +277,8 @@ class WGANGP(_nn.Module):
         return interpolated
 
     def gradient_penalty(self, pred, interpolated):
+        # In order to calculate second order gradient,
+        # we need to set create_graph, retain_graph to True
         grads = _torch.autograd.grad(
             pred, interpolated, grad_outputs=_torch.ones_like(pred),
             create_graph=True, retain_graph=True
