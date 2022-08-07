@@ -1,5 +1,4 @@
 import torch
-from matplotlib import pyplot as plt
 from torch import nn
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
@@ -9,7 +8,7 @@ from antorcha import toy_models as toy
 from antorcha.data.loaders import PreprocessedDataLoader
 from antorcha.train.trainer import fit
 from antorcha.utils import fix_ssl_download
-from antorcha.utils.plotting import visualize_latent_space_dist, plot_interpolation
+from antorcha.utils.plotting import visualize_latent_space_dist, plot_interpolation, show_images
 
 
 def to_gpu(x, y):
@@ -54,14 +53,14 @@ if __name__ == '__main__':
 
     # Reconstruction
     # ==============
-    img = next(iter(train_loader))[0].to('cpu')[0].permute((1, 2, 0))
-    plt.imshow(img, cmap='gray')
+    vae.eval()
+    img = next(iter(train_loader))[0]
 
     with torch.no_grad():
-        pred = vae(img.permute(2, 0, 1).reshape((-1, 1, 28, 28)).to('cuda'))
-        pred = pred.to('cpu')[0].permute((1, 2, 0))
+        pred = vae(img)
 
-    plt.imshow(pred, cmap='gray')
+    show_images(img.cpu())
+    show_images(pred.cpu())
 
     # Dist. of Latent space
     # =====================

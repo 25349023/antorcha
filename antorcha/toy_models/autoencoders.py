@@ -10,6 +10,7 @@ from .basic_nn import (
     MLP as _MLP
 )
 from .util import CoderParams as _Params, CNNParams as _CNNParams, MLPParams as _MLPParams
+from ..layers.util import sequential_forward as _seq_forward
 
 
 def _network_selector(params: _Union[_CNNParams, _MLPParams], conv_type='normal'):
@@ -24,20 +25,21 @@ def _network_selector(params: _Union[_CNNParams, _MLPParams], conv_type='normal'
         return _MLP(params)
 
 
+@_seq_forward
 class Encoder(_nn.Module):
-    def __init__(self, params: _Params):
+    def __init__(self, params: _Params, with_mlp=True):
         super().__init__()
-        self.encoding_network = _network_selector(params.net_params)
-        self.fmap_shape = self.encoding_network.fmap_shape
-        self.flatten = _nn.Flatten()
-        self.dense = _nn.Linear(
-            self.fmap_shape ** 2 * params.net_params.out_channels[-1], params.z_dim)
 
-    def forward(self, x):
-        x = self.encoding_network(x)
-        x = self.flatten(x)
-        x = self.dense(x)
-        return x
+        self.encoding_network = _network_selector(params.net_params)
+        self.layers = [self.encoding_network]
+
+        if with_mlp:
+            self.fmap_shape = self.encoding_network.fmap_shape
+            self.flatten = _nn.Flatten()
+            self.dense = _nn.Linear(
+                self.fmap_shape ** 2 * params.net_params.out_channels[-1], params.z_dim)
+
+            self.layers.extend([self.flatten, self.dense])
 
 
 def _gaussian_sampling(mu, log_var):
@@ -71,23 +73,28 @@ class VariationalEncoder(_nn.Module):
 
 
 class Decoder(_nn.Module):
-    def __init__(self, params: _Params):
+    def __init__(self, params: _Params, with_mlp=True):
         super().__init__()
         net_p = params.net_params
-        self.in_channel = net_p.in_channel
-        self.fmap_shape = net_p.shape
-        self.dense = _nn.Linear(params.z_dim, net_p.shape ** 2 * net_p.in_channel)
+
+        self.with_mlp = with_mlp
+        if with_mlp:
+            self.in_channel = net_p.in_channel
+            self.fmap_shape = net_p.shape
+            self.dense = _nn.Linear(params.z_dim, net_p.shape ** 2 * net_p.in_channel)
+
         self.decoding_network = _network_selector(params.net_params, conv_type='transposed')
 
     def forward(self, x):
-        x = self.dense(x)
-        x = x.reshape((-1, self.in_channel, self.fmap_shape, self.fmap_shape))
+        if self.with_mlp:
+            x = self.dense(x)
+            x = x.reshape((-1, self.in_channel, self.fmap_shape, self.fmap_shape))
         x = self.decoding_network(x)
         return x
 
 
 class AutoEncoder(_nn.Module):
-    def __init__(self, encoder_params: _Params, decoder_params: _Params, auto_shape=False):
+    def __init__(self, encoder_params: _Params, decoder_params: _Params, auto_shape=False, with_mlp=True):
         """
         :param encoder_params:
         :param decoder_params:
@@ -96,13 +103,13 @@ class AutoEncoder(_nn.Module):
         """
         super().__init__()
 
-        self.encoder = Encoder(encoder_params)
+        self.encoder = Encoder(encoder_params, with_mlp=with_mlp)
         if auto_shape and isinstance(decoder_params.net_params, _CNNParams):
             decoder_params = decoder_params._replace(
                 net_params=decoder_params.net_params._replace(
                     shape=self.encoder.fmap_shape)
             )
-        self.decoder = Decoder(decoder_params)
+        self.decoder = Decoder(decoder_params, with_mlp=with_mlp)
 
     def forward(self, x):
         z = self.encoder(x)

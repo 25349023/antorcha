@@ -21,3 +21,34 @@ class CamelDataset(_data.Dataset):
 
     def __len__(self):
         return self.data.shape[0]
+
+
+class ReconstructionTaskDataset(_data.Dataset):
+    def __init__(self, dataset):
+        self.dataset = dataset
+
+    def __getitem__(self, item):
+        x, y = self.dataset[item]
+        return x, x.clone()
+
+    def __len__(self):
+        return len(self.dataset)
+
+
+class TransformedDataset(_data.Dataset):
+    def __init__(self, dataset, transform):
+        self.dataset = dataset
+        self.transform = transform
+
+    def __getitem__(self, item):
+        data = self.dataset[item]
+        try:
+            transformed_data = self.transform(data)
+        except TypeError:
+            print(self.transform, len(data))
+            raise
+        return transformed_data
+
+    def __len__(self):
+        return len(self.dataset)
+

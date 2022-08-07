@@ -3,6 +3,14 @@ import torch as _torch
 from matplotlib import pyplot as _plt
 
 
+def show_images(images, row=4, col=6):
+    fig, ax = _plt.subplots(row, col, figsize=(10, 6))
+    for i in range(row):
+        for j in range(col):
+            ax[i, j].imshow(images[i * col + j].permute((1, 2, 0)), cmap='gray')
+    fig.show()
+
+
 def visualize_latent_space_dist(encoder, data_loader, name):
     points = []
     color = []
