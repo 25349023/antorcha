@@ -32,7 +32,7 @@ if __name__ == '__main__':
     gp = GeneratorParams(
         net_params=CNNParams(
             in_channel=64,
-            out_channels=[128, 64, 64, 1],
+            out_channels=[128, 128, 64, 1],
             shape=7,
             kernels=[3, 3, 3, 3],
             strides=[1, 1, 1, 1],
@@ -54,7 +54,7 @@ if __name__ == '__main__':
 
     params = WGANParams(
         gen_params=gp, crtc_params=cp,
-        gen_learning_rate=1e-4, crtc_learning_rate=5e-5,
+        gen_learning_rate=2e-4, crtc_learning_rate=3e-5,
         crtc_weight_threshold=0.008,
         n_critic=5
     )
@@ -76,7 +76,7 @@ if __name__ == '__main__':
             if i % 2 == 0:
                 ax[i, j].imshow(img[i * 8 + j], cmap='gray')
             else:
-                ax[i, j].imshow(real[(i // 2) * 8 + j], cmap='gray')
+                ax[i, j].imshow(1 - real[(i // 2) * 8 + j], cmap='gray')
     fig.show()
 
     # torch.save(wgan, 'wgan_minst.pth')

@@ -1,11 +1,13 @@
+import os.path as _pth
+
 import numpy as _np
 from torch.utils import data as _data
 
 
 # [TODO] Generalize this to Doodle Dataset
 class CamelDataset(_data.Dataset):
-    def __init__(self, transform=None, train=True):
-        self.data = _np.load('data/camel/full_numpy_bitmap_camel.npy')
+    def __init__(self, path_to_data_root='.', transform=None, train=True):
+        self.data = _np.load(_pth.join(path_to_data_root, 'data', 'camel', 'full_numpy_bitmap_camel.npy'))
         self.data = self.data.reshape((-1, 28, 28, 1))
         if train:
             self.data = self.data[:-10000]
@@ -51,4 +53,3 @@ class TransformedDataset(_data.Dataset):
 
     def __len__(self):
         return len(self.dataset)
-

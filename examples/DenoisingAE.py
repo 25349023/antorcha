@@ -17,14 +17,14 @@ def to_gpu(x, y):
     return x.to('cuda'), y.to('cuda')
 
 
-def random_noise(x, y, std=0.25):
+def random_noise(x, y, std=0.3):
     noised_x = x + torch.randn_like(x) * std
     return noised_x, y
 
 
 def random_mask(x, y):
     mask = torch.rand_like(x)
-    masked_x = x.where(mask > 0.3, torch.zeros_like(x))
+    masked_x = x.where(mask > 0.5, torch.zeros_like(x))
     return masked_x, y
 
 
@@ -35,10 +35,10 @@ if __name__ == '__main__':
     test_ds = datasets.MNIST(root='../data', train=False, download=True, transform=transforms.ToTensor())
 
     train_ds = TransformedDataset(ReconstructionTaskDataset(train_ds),
-                                  StarCompose([random_noise]))
+                                  StarCompose([random_noise, random_mask]))
 
     val_ds = TransformedDataset(ReconstructionTaskDataset(test_ds),
-                                StarCompose([random_noise]))
+                                StarCompose([random_noise, random_mask]))
 
     train_loader = DataLoader(train_ds, batch_size=64, shuffle=True, num_workers=1, prefetch_factor=6)
     val_loader = DataLoader(val_ds, batch_size=64, shuffle=False, num_workers=1, prefetch_factor=6)

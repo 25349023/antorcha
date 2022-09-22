@@ -67,7 +67,7 @@ class AlexNet(_nn.Module):
             _nn.ReLU(),
             _nn.Dropout(0.5),
             _nn.Linear(4096, 10),
-        ).to('cuda', non_blocking=True)
+        )
 
     def forward(self, x):
         x = self.model(x)

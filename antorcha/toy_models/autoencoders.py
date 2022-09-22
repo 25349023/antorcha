@@ -150,7 +150,7 @@ class VariationalAutoEncoder(_nn.Module):
 
     @staticmethod
     def kl_loss_fn(mu, log_var):
-        kl = 0.5 * _torch.sum(_torch.square(mu) + _torch.exp(log_var) - 1 - log_var, dim=1)
+        kl = 0.5 * _torch.sum(mu ** 2 + log_var.exp() - 1 - log_var, dim=1)
         return _torch.mean(kl)
 
     def loss(self, r_loss, pred, gt):

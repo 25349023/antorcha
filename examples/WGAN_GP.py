@@ -63,7 +63,7 @@ if __name__ == '__main__':
     wgan_gp = gans.WGANGP(params)
     wgan_gp.device = 'cuda'
 
-    fit_adv(wgan_gp, train_loader, test_loader, epochs=80)
+    fit_adv(wgan_gp, train_loader, test_loader, epochs=50)
 
     img = wgan_gp.generate_images(80).reshape(80, 28, 28, 1)
 
@@ -77,7 +77,7 @@ if __name__ == '__main__':
             if i % 2 == 0:
                 ax[i, j].imshow(img[i * 8 + j], cmap='gray')
             else:
-                ax[i, j].imshow(real[(i // 2) * 8 + j], cmap='gray')
+                ax[i, j].imshow(1 - real[(i // 2) * 8 + j], cmap='gray')
     fig.show()
 
     # torch.save(wgan_gp, 'wgan_gp_minst.pth')

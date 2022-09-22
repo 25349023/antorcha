@@ -2,7 +2,7 @@ from matplotlib import pyplot as plt
 from torch import nn
 from torch.distributions.transforms import AffineTransform
 from torch.utils.data import DataLoader
-from torchvision import transforms as T
+from torchvision import transforms as T, datasets
 
 from antorcha.data.datasets import CamelDataset
 from antorcha.data.loaders import PreprocessedDataLoader
@@ -11,7 +11,8 @@ from antorcha.train.adversarial_trainer import fit_adv
 
 
 def to_gpu(*args):
-    return tuple(x.to('cuda', non_blocking=True) for x in args)
+    return args[0].to('cuda', non_blocking=True),
+    # return tuple(x.to('cuda', non_blocking=True) for x in args)
 
 
 if __name__ == '__main__':
@@ -20,8 +21,10 @@ if __name__ == '__main__':
         AffineTransform(loc=-1, scale=2),
     ])
 
-    train_ds = CamelDataset(transform=img_preprocessing)
-    test_ds = CamelDataset(transform=img_preprocessing, train=False)
+    # train_ds = CamelDataset(r'..\antorcha\data', transform=img_preprocessing)
+    # test_ds = CamelDataset(r'..\antorcha\data', transform=img_preprocessing, train=False)
+    train_ds = datasets.MNIST(root='../data', train=True, download=True, transform=img_preprocessing)
+    test_ds = datasets.MNIST(root='../data', train=False, download=True, transform=img_preprocessing)
 
     train_loader = DataLoader(train_ds, batch_size=64, shuffle=True, num_workers=1, prefetch_factor=4)
     test_loader = DataLoader(test_ds, batch_size=64, shuffle=True, num_workers=1)
@@ -57,21 +60,21 @@ if __name__ == '__main__':
     gan = gans.GAN(params)
     gan.device = 'cuda'
 
-    fit_adv(gan, train_loader, test_loader)
+    fit_adv(gan, train_loader, test_loader, epochs=20)
 
-    img = gan.generate_images(20).reshape(20, 28, 28, 1)
+    img = gan.generate_images(80).reshape(80, 28, 28, 1)
 
     real = next(iter(train_loader))[0]
     real = real.permute(0, 2, 3, 1).cpu().numpy()
 
-    fig, ax = plt.subplots(5, 4, figsize=(20, 25))
+    fig, ax = plt.subplots(10, 8, figsize=(20, 25))
 
-    for i in range(5):
-        for j in range(4):
+    for i in range(10):
+        for j in range(8):
             if i % 2 == 0:
-                ax[i, j].imshow(img[i * 4 + j], cmap='gray')
+                ax[i, j].imshow(img[i * 8 + j], cmap='gray')
             else:
-                ax[i, j].imshow(real[i * 4 + j], cmap='gray')
+                ax[i, j].imshow(1 - real[(i // 2) * 8 + j], cmap='gray')
     fig.show()
 
     # torch.save(gan, 'gan.pth')

@@ -49,12 +49,12 @@ class AutoConv2d(_nn.Module):
             out_channels: int,
             kernel_size: square_2d[int],
             stride: square_2d[int],
-            padding='auto',
+            padding=-1,
     ):
         super().__init__()
 
         self.layers = []
-        if padding == 'auto':
+        if padding == -1:
             self.conv = autopad_conv2d(in_channels, out_channels, kernel_size, stride)
         else:
             self.conv = _nn.Conv2d(in_channels, out_channels, kernel_size,
@@ -71,13 +71,13 @@ class AutoConvTranspose2d(_nn.Module):
             out_channels: int,
             kernel_size: square_2d[int],
             stride: square_2d[int],
-            padding: square_2d[int] = 'auto',
+            padding: square_2d[int] = -1,
             out_padding=0
     ):
         super().__init__()
 
         self.layers = []
-        if padding == 'auto':
+        if padding == -1:
             self.conv_t = autopad_conv_transpose2d(
                 in_channels, out_channels, kernel_size, stride)
         else:
