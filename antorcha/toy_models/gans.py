@@ -69,14 +69,12 @@ class GAN(_nn.Module):
             image = self.generator(z).to('cpu').numpy()
             return image
 
-    def forward_dis(self, real_imgs):
+    def forward_dis(self, real_imgs, fake_imgs):
         batch_size = real_imgs.shape[0]
-        z = _torch.randn(batch_size, self.z_dim, device=self.device)
         ones = _torch.ones((batch_size, 1), device=self.device)
         zeros = _torch.zeros((batch_size, 1), device=self.device)
 
-        fake_imgs = self.generator(z)
-        dis_fake_out = self.discriminator(fake_imgs.detach())
+        dis_fake_out = self.discriminator(fake_imgs)
         dis_real_out = self.discriminator(real_imgs)
 
         loss_fake = self.loss_fn(dis_fake_out, zeros)
@@ -84,27 +82,26 @@ class GAN(_nn.Module):
 
         return 0.5 * (loss_fake + loss_real)
 
-    def train_dis(self, real_imgs):
+    def train_dis(self, real_imgs, fake_imgs):
         self.dis_opt.zero_grad()
-        loss = self.forward_dis(real_imgs)
+        loss = self.forward_dis(real_imgs, fake_imgs)
         loss.backward()
         self.dis_opt.step()
 
         return loss.mean().item()
 
-    def forward_gen(self, batch_size):
-        z = _torch.randn(batch_size, self.z_dim, device=self.device)
+    def forward_gen(self, fake_imgs):
+        batch_size = fake_imgs.shape[0]
         ones = _torch.ones((batch_size, 1), device=self.device)
 
-        fake_imgs = self.generator(z)
         dis_fake_out = self.discriminator(fake_imgs)
         loss = self.loss_fn(dis_fake_out, ones)
 
         return loss
 
-    def train_gen(self, batch_size):
+    def train_gen(self, fake_imgs):
         self.gen_opt.zero_grad()
-        loss = self.forward_gen(batch_size)
+        loss = self.forward_gen(fake_imgs)
         loss.backward()
         self.gen_opt.step()
 
@@ -112,15 +109,25 @@ class GAN(_nn.Module):
 
     def train_adv(self, real_imgs):
         batch_size = real_imgs.shape[0]
-        d_loss = self.train_dis(real_imgs)
-        g_loss = self.train_gen(batch_size)
+
+        z = _torch.randn(batch_size, self.z_dim, device=self.device)
+        fake_imgs = self.generator(z)
+
+        # for the sake of efficiency, D and G will share the same fake images,
+        # but it requires the fake_imgs fed into D to be detached
+        d_loss = self.train_dis(real_imgs, fake_imgs.detach())
+        g_loss = self.train_gen(fake_imgs)
 
         return d_loss, g_loss
 
     def test_adv(self, real_imgs):
         batch_size = real_imgs.shape[0]
-        d_loss = self.forward_dis(real_imgs)
-        g_loss = self.forward_gen(batch_size)
+
+        z = _torch.randn(batch_size, self.z_dim, device=self.device)
+        fake_imgs = self.generator(z)
+
+        d_loss = self.forward_dis(real_imgs, fake_imgs)
+        g_loss = self.forward_gen(fake_imgs)
 
         return d_loss, g_loss
 
@@ -169,41 +176,38 @@ class WGAN(_nn.Module):
             image = self.generator(z).to('cpu').numpy()
             return image
 
-    def forward_crtc(self, real_imgs):
-        batch_size = real_imgs.shape[0]
-        z = _torch.randn(batch_size, self.z_dim, device=self.device)
-
-        fake_imgs = self.generator(z)
-        crtc_fake_out = self.critic(fake_imgs.detach())
+    def forward_crtc(self, real_imgs, fake_imgs):
+        crtc_fake_out = self.critic(fake_imgs)
         crtc_real_out = self.critic(real_imgs)
 
+        # maximize real - fake -> minimize fake - real
         loss_fake = _torch.mean(crtc_fake_out)
-        loss_real = -_torch.mean(crtc_real_out)
+        loss_real = _torch.mean(crtc_real_out)
 
-        return 0.5 * (loss_fake + loss_real)
+        return 0.5 * (loss_fake - loss_real)
 
-    def train_crtc(self, real_imgs):
+    def train_crtc(self, real_imgs, fake_imgs):
         self.crtc_opt.zero_grad()
-        loss = self.forward_crtc(real_imgs)
+        loss = self.forward_crtc(real_imgs, fake_imgs)
         loss.backward()
         self.crtc_opt.step()
         self.clip_crtc_weight()
 
         return loss.mean().item()
 
-    def forward_gen(self, batch_size):
-        z = _torch.randn(batch_size, self.z_dim, device=self.device)
-
-        fake_imgs = self.generator(z)
+    def forward_gen(self, fake_imgs):
         crtc_fake_out = self.critic(fake_imgs)
+
+        # maximize fake -> minimize -fake
         loss = -_torch.mean(crtc_fake_out)
         return loss
 
-    def train_gen(self, batch_size):
+    def train_gen(self, fake_imgs):
         self.gen_opt.zero_grad()
-        loss = self.forward_gen(batch_size)
+        loss = self.forward_gen(fake_imgs)
         loss.backward()
         self.gen_opt.step()
+
         return loss.mean().item()
 
     def clip_crtc_weight(self):
@@ -212,12 +216,15 @@ class WGAN(_nn.Module):
 
     def train_adv(self, real_imgs):
         batch_size = real_imgs.shape[0]
-        c_loss = self.train_crtc(real_imgs)
+        z = _torch.randn(batch_size, self.z_dim, device=self.device)
+        fake_imgs = self.generator(z)
+
+        c_loss = self.train_crtc(real_imgs, fake_imgs.detach())
 
         g_loss = None
         if self.steps % self.n_critic == 0:
             self.steps = 1
-            g_loss = self.train_gen(batch_size)
+            g_loss = self.train_gen(fake_imgs)
 
         self.steps += 1
 
@@ -225,8 +232,12 @@ class WGAN(_nn.Module):
 
     def test_adv(self, real_imgs):
         batch_size = real_imgs.shape[0]
-        c_loss = self.forward_crtc(real_imgs)
-        g_loss = self.forward_gen(batch_size)
+
+        z = _torch.randn(batch_size, self.z_dim, device=self.device)
+        fake_imgs = self.generator(z)
+
+        c_loss = self.forward_crtc(real_imgs, fake_imgs)
+        g_loss = self.forward_gen(fake_imgs)
 
         return c_loss, g_loss
 
@@ -288,18 +299,14 @@ class WGANGP(_nn.Module):
 
         return penalty
 
-    def forward_crtc(self, real_imgs, train=False):
-        batch_size = real_imgs.shape[0]
-        z = _torch.randn(batch_size, self.z_dim, device=self.device)
-        fake_imgs = self.generator(z)
-
-        crtc_fake_out = self.critic(fake_imgs.detach())
+    def forward_crtc(self, real_imgs, fake_imgs, train=False):
+        crtc_fake_out = self.critic(fake_imgs)
         crtc_real_out = self.critic(real_imgs)
 
         loss_fake = _torch.mean(crtc_fake_out)
-        loss_real = -_torch.mean(crtc_real_out)
+        loss_real = _torch.mean(crtc_real_out)
 
-        loss = loss_fake + loss_real
+        loss = loss_fake - loss_real
         penalty = None
 
         if train:
@@ -309,38 +316,39 @@ class WGANGP(_nn.Module):
 
         return loss, penalty
 
-    def train_crtc(self, real_imgs):
+    def train_crtc(self, real_imgs, fake_imgs):
         self.crtc_opt.zero_grad()
-        loss, penalty = self.forward_crtc(real_imgs, train=True)
+        loss, penalty = self.forward_crtc(real_imgs, fake_imgs, train=True)
         total_loss = loss + self.gp_weight * penalty
         total_loss.backward()
         self.crtc_opt.step()
 
         return loss.mean().item(), penalty.mean().item()
 
-    def forward_gen(self, batch_size):
-        z = _torch.randn(batch_size, self.z_dim, device=self.device)
-
-        fake_imgs = self.generator(z)
+    def forward_gen(self, fake_imgs):
         crtc_fake_out = self.critic(fake_imgs)
         loss = -_torch.mean(crtc_fake_out)
         return loss
 
-    def train_gen(self, batch_size):
+    def train_gen(self, fake_imgs):
         self.gen_opt.zero_grad()
-        loss = self.forward_gen(batch_size)
+        loss = self.forward_gen(fake_imgs)
         loss.backward()
         self.gen_opt.step()
+
         return loss.mean().item()
 
     def train_adv(self, real_imgs):
         batch_size = real_imgs.shape[0]
-        c_loss, penalty = self.train_crtc(real_imgs)
+        z = _torch.randn(batch_size, self.z_dim, device=self.device)
+        fake_imgs = self.generator(z)
+
+        c_loss, penalty = self.train_crtc(real_imgs, fake_imgs.detach())
 
         g_loss = None
         if self.steps % self.n_critic == 0:
             self.steps = 1
-            g_loss = self.train_gen(batch_size)
+            g_loss = self.train_gen(fake_imgs)
 
         self.steps += 1
 
@@ -348,7 +356,10 @@ class WGANGP(_nn.Module):
 
     def test_adv(self, real_imgs):
         batch_size = real_imgs.shape[0]
-        c_loss, _ = self.forward_crtc(real_imgs)
-        g_loss = self.forward_gen(batch_size)
+        z = _torch.randn(batch_size, self.z_dim, device=self.device)
+        fake_imgs = self.generator(z)
+
+        c_loss, _ = self.forward_crtc(real_imgs, fake_imgs)
+        g_loss = self.forward_gen(fake_imgs)
 
         return c_loss, g_loss
