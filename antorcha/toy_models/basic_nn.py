@@ -2,14 +2,16 @@ import warnings
 
 from torch import nn as _nn
 
-from . import util as _util
+from . import util as _util, param as _param
 from ..layers import AutoConv2d as _AConv2d, AutoConvTranspose2d as _AConvT2d, AutoLinear as _ALinear
 from ..layers.util import sequential_forward as _seq_forward
+
+# [TODO] Unify basic nn models
 
 
 @_seq_forward
 class MLP(_nn.Module):
-    def __init__(self, params: _util.MLPParams):
+    def __init__(self, params: _param.MLPParams):
         """
         Construct a multi-layer Fully Connected Neural Network
 
@@ -19,7 +21,7 @@ class MLP(_nn.Module):
         super().__init__()
         i_feat = params.in_feature
         bad = params.bad_setting
-        last_bad = params.last_layer_bad or _util.BADSettings()
+        last_bad = params.last_layer_bad or _param.BADSettings()
 
         self.layers = []
         for i, o_feat in enumerate(params.out_features):
@@ -35,7 +37,7 @@ class MLP(_nn.Module):
 
 @_seq_forward
 class CNN(_nn.Module):
-    def __init__(self, params: _util.CNNParams):
+    def __init__(self, params: _param.CNNParams):
         """
         Construct a multi-layer Convolutional Neural Network
 
@@ -63,7 +65,7 @@ class CNN(_nn.Module):
 
 @_seq_forward
 class TransposedCNN(_nn.Module):
-    def __init__(self, params: _util.CNNParams):
+    def __init__(self, params: _param.CNNParams):
         """
         Construct a multi-layer Transposed Convolutional Neural Network
 
@@ -75,7 +77,7 @@ class TransposedCNN(_nn.Module):
 
         ic = params.in_channel
         bad = params.bad_setting
-        last_bad = params.last_layer_bad or _util.BADSettings(activation=_nn.Sigmoid)
+        last_bad = params.last_layer_bad or _param.BADSettings(activation=_nn.Sigmoid)
 
         self.layers = []
         conv_args = zip(params.out_channels, params.kernels, params.strides)
@@ -93,7 +95,7 @@ class TransposedCNN(_nn.Module):
 
 @_seq_forward
 class UpSamplingCNN(_nn.Module):
-    def __init__(self, params: _util.CNNParams):
+    def __init__(self, params: _param.CNNParams):
         """
         Construct a multi-layer Upsampling Convolutional Neural Network
 
@@ -108,7 +110,7 @@ class UpSamplingCNN(_nn.Module):
 
         ic = params.in_channel
         bad = params.bad_setting
-        last_bad = params.last_layer_bad or _util.BADSettings(activation=_nn.Sigmoid)
+        last_bad = params.last_layer_bad or _param.BADSettings(activation=_nn.Sigmoid)
 
         self.layers = []
         conv_args = zip(params.out_channels, params.kernels, params.strides, params.up_sampling)
@@ -130,7 +132,7 @@ class UpSamplingCNN(_nn.Module):
 
 @_seq_forward
 class CNNWithMLP(_nn.Module):
-    def __init__(self, cnn_params: _util.CNNParams, mlp_params: _util.MLPParams):
+    def __init__(self, cnn_params: _param.CNNParams, mlp_params: _param.MLPParams):
         """
         Construct a network that contains CNN and MLP
 

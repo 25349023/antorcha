@@ -9,7 +9,7 @@ from .basic_nn import (
     UpSamplingCNN as _UpSamplingCNN,
     MLP as _MLP
 )
-from .util import CoderParams as _Params, CNNParams as _CNNParams, MLPParams as _MLPParams
+from .param import MLPParams as _MLPParams, CNNParams as _CNNParams, CoderParams as _Params
 from ..layers.util import sequential_forward as _seq_forward
 
 

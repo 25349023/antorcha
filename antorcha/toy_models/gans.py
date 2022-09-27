@@ -3,11 +3,11 @@ from warnings import warn as _warn
 import torch as _torch
 from torch import nn as _nn
 
-from . import basic_nn as _basic_nn, util as _util
+from . import basic_nn as _basic_nn, util as _util, param as _param
 
 
 class Generator(_nn.Module):
-    def __init__(self, params: _util.GeneratorParams):
+    def __init__(self, params: _param.GeneratorParams):
         super().__init__()
         self.in_channel = params.net_params.in_channel
         self.fmap_shape = params.net_params.shape
@@ -26,11 +26,11 @@ class Generator(_nn.Module):
 
 
 class Discriminator(_nn.Module):
-    def __init__(self, params: _util.CNNParams):
+    def __init__(self, params: _param.CNNParams):
         super().__init__()
         self.in_channel = params.in_channel
 
-        mlp_params = _util.MLPParams(in_feature=-1, out_features=[1], bad_setting=_util.BADSettings())
+        mlp_params = _param.MLPParams(in_feature=-1, out_features=[1], bad_setting=_param.BADSettings())
         self.discriminating_network = _basic_nn.CNNWithMLP(params, mlp_params)
         self.activation = _nn.Sigmoid()
 
@@ -44,7 +44,7 @@ class Discriminator(_nn.Module):
 class GAN(_nn.Module):
     loss_names = ['D Loss', 'G Loss']
 
-    def __init__(self, params: _util.GANParams):
+    def __init__(self, params: _param.GANParams):
         super().__init__()
         self.z_dim = params.gen_params.z_dim
 
@@ -133,11 +133,11 @@ class GAN(_nn.Module):
 
 
 class WCritic(_nn.Module):
-    def __init__(self, params: _util.CNNParams):
+    def __init__(self, params: _param.CNNParams):
         super().__init__()
         self.in_channel = params.in_channel
 
-        mlp_params = _util.MLPParams(in_feature=-1, out_features=[1], bad_setting=_util.BADSettings())
+        mlp_params = _param.MLPParams(in_feature=-1, out_features=[1], bad_setting=_param.BADSettings())
         self.critic_network = _basic_nn.CNNWithMLP(params, mlp_params)
 
     def forward(self, x):
@@ -149,7 +149,7 @@ class WCritic(_nn.Module):
 class WGAN(_nn.Module):
     loss_names = ['C Loss', 'G Loss']
 
-    def __init__(self, params: _util.WGANParams):
+    def __init__(self, params: _param.WGANParams):
         super().__init__()
         self.z_dim = params.gen_params.z_dim
 
@@ -246,7 +246,7 @@ class WGAN(_nn.Module):
 class WGANGP(_nn.Module):
     loss_names = ['C Loss', 'G Loss', 'Gradient Penalty']
 
-    def __init__(self, params: _util.WGANGPParams):
+    def __init__(self, params: _param.WGANGPParams):
         super().__init__()
         self.z_dim = params.gen_params.z_dim
 

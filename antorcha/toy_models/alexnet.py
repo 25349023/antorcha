@@ -2,7 +2,7 @@ import torch as _torch
 from torch import nn as _nn
 
 from .basic_nn import CNN as _CNN, MLP as _MLP
-from .util import CNNParams as _CNNParams, MLPParams as _MLPParams, BADSettings as _Bad
+from .param import BADSettings as _Bad, MLPParams as _MLPParams, CNNParams as _CNNParams
 from ..layers import autopad_conv2d as _autopad_conv2d
 
 

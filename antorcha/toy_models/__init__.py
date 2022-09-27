@@ -1,3 +1,4 @@
+from .param import *
 from .util import *
 
 __all__ = ['basic_nn', 'autoencoders', 'gans',
