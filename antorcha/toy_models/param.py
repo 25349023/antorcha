@@ -2,7 +2,8 @@ from typing import NamedTuple as _NamedTuple, Callable as _Callable, Union as _U
 
 from torch import nn as _nn
 
-from .util import estimate_conv2d_size
+from . import util as _util
+from ..utils.aux_types import maybe_pair as _maybe_pair
 
 
 class BADSettings(_NamedTuple):
@@ -29,13 +30,17 @@ class CNNParams(_NamedTuple):
     last_layer_bad: BADSettings = None
 
 
+_SimpleNNParams = _Union[MLPParams, CNNParams]
+BasicNNParams = _maybe_pair[_SimpleNNParams]
+
+
 class CoderParams(_NamedTuple):
-    net_params: _Union[MLPParams, CNNParams]
+    net_params: BasicNNParams
     z_dim: int
 
 
 class GeneratorParams(_NamedTuple):
-    net_params: _Union[MLPParams, CNNParams]
+    net_params: BasicNNParams
     z_dim: int
 
 
@@ -67,24 +72,40 @@ class WGANGPParams(_NamedTuple):
 def symmetric_params(ec_params: CoderParams):
     net_p = ec_params.net_params
 
-    if isinstance(net_p, CNNParams):
-        return CoderParams(
-            net_params=CNNParams(
-                in_channel=net_p.out_channels[-1],
-                out_channels=net_p.out_channels[-2::-1] + [net_p.in_channel],
-                shape=estimate_conv2d_size(net_p.shape, net_p.strides),
-                kernels=net_p.kernels[::-1],
-                strides=net_p.strides[::-1],
-                bad_setting=net_p.bad_setting
-            ),
-            z_dim=ec_params.z_dim,
-        )
-    elif isinstance(net_p, MLPParams):
-        return CoderParams(
-            net_params=MLPParams(
-                in_feature=net_p.out_features[-1],
-                out_features=net_p.out_features[-2::-1] + [net_p.in_feature],
-                bad_setting=net_p.bad_setting
-            ),
-            z_dim=ec_params.z_dim
-        )
+    match net_p:
+        case CNNParams(p):
+            return ec_params._replace(net_params=_symmetric_params_cnn(net_p))
+        case MLPParams(p):
+            return ec_params._replace(net_params=_symmetric_params_mlp(net_p))
+        case [CNNParams(p1), MLPParams(p2)]:
+            return ec_params._replace(net_params=_symmetric_params_cnn_mlp(net_p))
+        case _:
+            raise ValueError('invalid network parameters')
+
+
+def _symmetric_params_mlp(net_p: BasicNNParams):
+    return MLPParams(
+        in_feature=net_p.out_features[-1],
+        out_features=net_p.out_features[-2::-1] + [net_p.in_feature],
+        bad_setting=net_p.bad_setting
+    )
+
+
+def _symmetric_params_cnn(net_p: BasicNNParams):
+    return CNNParams(
+        in_channel=net_p.out_channels[-1],
+        out_channels=net_p.out_channels[-2::-1] + [net_p.in_channel],
+        shape=_util.estimate_conv2d_size(net_p.shape, net_p.strides),
+        kernels=net_p.kernels[::-1],
+        strides=net_p.strides[::-1],
+        bad_setting=net_p.bad_setting
+    )
+
+
+def _symmetric_params_cnn_mlp(net_p: BasicNNParams, mode='transposed'):
+    if mode == 'transposed':
+        cnn_p, mlp_p = net_p
+        shape = _util.estimate_output_shape(cnn_p)
+        mlp_p = mlp_p._replace(in_feature=_util.flatten_length(shape))
+        return (_symmetric_params_mlp(mlp_p),
+                _symmetric_params_cnn(cnn_p))
