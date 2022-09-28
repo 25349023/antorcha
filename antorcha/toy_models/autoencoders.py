@@ -1,45 +1,32 @@
-from typing import Union as _Union
+import warnings
 
 import torch as _torch
 from torch import nn as _nn
 
-from .basic_nn import (
-    CNN as _CNN,
-    TransposedCNN as _TransposedCNN,
-    UpSamplingCNN as _UpSamplingCNN,
-    MLP as _MLP
-)
-from .param import MLPParams as _MLPParams, CNNParams as _CNNParams, CoderParams as _Params
-from ..layers.util import sequential_forward as _seq_forward
+from .basic_nn import _network_selector
+from .param import CNNParams as _CNNParams, CoderParams as _Params
 
 
-def _network_selector(params: _Union[_CNNParams, _MLPParams], conv_type='normal'):
-    if isinstance(params, _CNNParams):
-        if conv_type == 'normal':
-            return _CNN(params)
-        elif conv_type == 'transposed':
-            return _TransposedCNN(params)
-        elif conv_type == 'upsampling':
-            return _UpSamplingCNN(params)
-    elif isinstance(params, _MLPParams):
-        return _MLP(params)
-
-
-@_seq_forward
 class Encoder(_nn.Module):
     def __init__(self, params: _Params, with_mlp=True):
         super().__init__()
 
-        self.encoding_network = _network_selector(params.net_params)
-        self.layers = [self.encoding_network]
+        # since isinstance(params, tuple) does not work,
+        # we check if it is an ordinary tuple by testing its length
+        if with_mlp and len(params.net_params) != 2:
+            raise ValueError('CNNWithMLP requires two sets of network params, but only 1 found')
 
-        if with_mlp:
-            self.fmap_shape = self.encoding_network.fmap_shape
-            self.flatten = _nn.Flatten()
-            self.dense = _nn.Linear(
-                self.fmap_shape ** 2 * params.net_params.out_channels[-1], params.z_dim)
+        conv_type = 'cnn_mlp' if with_mlp else 'normal'
+        self.encoding_network = _network_selector(params.net_params, conv_type=conv_type)
 
-            self.layers.extend([self.flatten, self.dense])
+        if params.z_dim not in (-1, self.encoding_network.out_shape):
+            warnings.warn('The actual output dimension does not match '
+                          'the z_dim specified by the CoderParams.',
+                          RuntimeWarning, stacklevel=2)
+
+    def forward(self, x):
+        x = self.encoding_network(x)
+        return x
 
 
 def _gaussian_sampling(mu, log_var):
@@ -75,20 +62,16 @@ class VariationalEncoder(_nn.Module):
 class Decoder(_nn.Module):
     def __init__(self, params: _Params, with_mlp=True):
         super().__init__()
-        net_p = params.net_params
 
-        self.with_mlp = with_mlp
-        if with_mlp:
-            self.in_channel = net_p.in_channel
-            self.fmap_shape = net_p.shape
-            self.dense = _nn.Linear(params.z_dim, net_p.shape ** 2 * net_p.in_channel)
+        # since isinstance(params, tuple) does not work,
+        # we check if it is an ordinary tuple by testing its length
+        if with_mlp and len(params.net_params) != 2:
+            raise ValueError('CNNWithMLP requires two sets of network params, but only one found')
 
-        self.decoding_network = _network_selector(params.net_params, conv_type='transposed')
+        conv_type = 'mlp_transposed' if with_mlp else 'transposed'
+        self.decoding_network = _network_selector(params.net_params, conv_type=conv_type)
 
     def forward(self, x):
-        if self.with_mlp:
-            x = self.dense(x)
-            x = x.reshape((-1, self.in_channel, self.fmap_shape, self.fmap_shape))
         x = self.decoding_network(x)
         return x
 
