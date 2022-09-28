@@ -2,11 +2,11 @@ import warnings
 
 from torch import nn as _nn
 
-from . import util as _util, param as _param
+from . import BasicNNParams as _BasicNNParams, MLPParams as _MLPParams
 from ..layers import AutoConv2d as _AConv2d, AutoConvTranspose2d as _AConvT2d, AutoLinear as _ALinear
 from ..layers.util import sequential_forward as _seq_forward
-
-# [TODO] Unify basic nn models
+from ..toy_models import util as _util, param as _param
+from ..utils.aux_types import maybe_pair as _maybe_pair
 
 
 @_seq_forward
@@ -23,6 +23,9 @@ class MLP(_nn.Module):
         bad = params.bad_setting
         last_bad = params.last_layer_bad or _param.BADSettings()
 
+        if not params.out_features:
+            raise ValueError("number of layers should not be zero")
+
         self.layers = []
         for i, o_feat in enumerate(params.out_features):
             if i == len(params.out_features) - 1:
@@ -33,6 +36,8 @@ class MLP(_nn.Module):
             self.add_module(f'linear{i}', dense)
             self.layers.append(dense)
             i_feat = o_feat
+
+        self.out_shape = (params.out_features[-1],)
 
 
 @_seq_forward
@@ -61,6 +66,8 @@ class CNN(_nn.Module):
             self.add_module(f'conv{i}', conv)
             self.layers.append(conv)
             ic = oc
+
+        self.out_shape = (params.out_channels[-1], self.fmap_shape, self.fmap_shape)
 
 
 @_seq_forward
@@ -92,6 +99,9 @@ class TransposedCNN(_nn.Module):
             self.layers.append(conv_t)
             ic = oc
 
+        s = _util.estimate_conv2d_size(params.shape, up_sample=params.strides)
+        self.out_shape = [params.out_channels[-1], s, s]
+
 
 @_seq_forward
 class UpSamplingCNN(_nn.Module):
@@ -104,9 +114,6 @@ class UpSamplingCNN(_nn.Module):
         """
 
         super().__init__()
-
-        self.out_shape = _util.estimate_conv2d_size(
-            params.shape, params.strides, params.up_sampling)
 
         ic = params.in_channel
         bad = params.bad_setting
@@ -129,6 +136,9 @@ class UpSamplingCNN(_nn.Module):
             self.layers.append(conv)
             ic = oc
 
+        s = _util.estimate_conv2d_size(params.shape, params.strides, params.up_sampling)
+        self.out_shape = (s, s, params.out_channels[-1])
+
 
 @_seq_forward
 class CNNWithMLP(_nn.Module):
@@ -136,7 +146,7 @@ class CNNWithMLP(_nn.Module):
         """
         Construct a network that contains CNN and MLP
 
-        The bad settings for the last layer defaults to that in CNN and MLP respectively
+        The bad settings for the last layer default to those in CNN and MLP respectively
         """
 
         super().__init__()
@@ -152,7 +162,49 @@ class CNNWithMLP(_nn.Module):
                           'and this will be corrected automatically.',
                           RuntimeWarning, stacklevel=2)
 
-        mlp_params = mlp_params._replace(in_feature=self.fmap_shape ** 2 * cnn_params.out_channels[-1])
+        mlp_params = mlp_params._replace(in_feature=mlp_in_feat)
         self.mlp = MLP(mlp_params)
 
         self.layers = [self.cnn, self.flatten, self.mlp]
+        self.out_shape = (mlp_params.out_features[-1],)
+
+
+class MLPWithTCNN(_nn.Module):
+    def __init__(self, mlp_params: _param.MLPParams, tcnn_params: _param.CNNParams):
+        """
+        Construct a network that contains MLP and Transposed CNN
+
+        The bad settings for the last layer default to
+        those in MLP and TransposedCNN respectively
+        """
+
+        super().__init__()
+
+        self.mlp = MLP(mlp_params)
+        self.tcnn_in_shape = (tcnn_params.in_channel,) + (tcnn_params.shape,) * 2
+        self.tcnn = TransposedCNN(tcnn_params)
+
+        s = _util.estimate_conv2d_size(tcnn_params.shape, up_sample=tcnn_params.strides)
+        self.out_shape = (tcnn_params.out_channels[-1], s, s)
+
+    def forward(self, x):
+        x = self.mlp(x)
+        x = x.reshape((-1, *self.tcnn_in_shape))
+        x = self.tcnn(x)
+        return x
+
+
+def _network_selector(params: _maybe_pair[_BasicNNParams], conv_type='normal'):
+    if isinstance(params, _MLPParams):
+        return MLP(params)
+
+    if conv_type == 'normal':
+        return CNN(params)
+    elif conv_type == 'cnn_mlp':
+        return CNNWithMLP(*params)
+    elif conv_type == 'transposed':
+        return TransposedCNN(params)
+    elif conv_type == 'mlp_transposed':
+        return MLPWithTCNN(*params)
+    elif conv_type == 'upsampling':
+        return UpSamplingCNN(params)
