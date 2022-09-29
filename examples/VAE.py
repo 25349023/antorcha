@@ -3,6 +3,10 @@ from torch import nn
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 
+import matplotlib
+matplotlib.use('TkAgg')
+import matplotlib.pyplot as plt
+
 import antorcha.toy_models.autoencoders as toy_ae
 from antorcha import toy_models as toy
 from antorcha.data.loaders import PreprocessedDataLoader
@@ -33,17 +37,22 @@ if __name__ == '__main__':
     test_loader = PreprocessedDataLoader(test_loader, to_gpu)
 
     encoder_params = toy.CoderParams(
-        net_params=toy.CNNParams(
-            in_channel=1, out_channels=[32, 64, 64, 64], shape=28,
-            kernels=[3, 3, 3, 3], strides=[1, 2, 2, 1],
-            bad_setting=toy.BADSettings(activation=nn.LeakyReLU)
+        net_params=(
+            toy.CNNParams(
+                in_channel=1, out_channels=[32, 64, 64, 64], shape=28,
+                kernels=[3, 3, 3, 3], strides=[1, 2, 2, 1],
+                bad_setting=toy.BADSettings(activation=nn.LeakyReLU)
+            ),
+            toy.MLPParams(
+                in_feature=-1, out_features=[16], bad_setting=toy.BADSettings()
+            )
         ),
         z_dim=2
     )
 
     decoder_params = toy.symmetric_params(encoder_params)
 
-    vae = toy_ae.VariationalAutoEncoder(encoder_params, decoder_params, r_factor=800)
+    vae = toy_ae.VariationalAutoEncoder(encoder_params, decoder_params, r_factor=800, with_mlp=True)
     print(vae.to('cuda').train(), '\n')
 
     r_loss_fn = nn.MSELoss()
@@ -66,3 +75,4 @@ if __name__ == '__main__':
     # =====================
     visualize_latent_space_dist(vae.encoder, test_loader, 'VAE')
     plot_interpolation(vae.decoder, 2, 28)
+    plt.show()

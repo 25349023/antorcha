@@ -73,11 +73,11 @@ def symmetric_params(ec_params: CoderParams):
     net_p = ec_params.net_params
 
     match net_p:
-        case CNNParams(p):
+        case CNNParams():
             return ec_params._replace(net_params=_symmetric_params_cnn(net_p))
-        case MLPParams(p):
+        case MLPParams():
             return ec_params._replace(net_params=_symmetric_params_mlp(net_p))
-        case [CNNParams(p1), MLPParams(p2)]:
+        case [CNNParams(), MLPParams()]:
             return ec_params._replace(net_params=_symmetric_params_cnn_mlp(net_p))
         case _:
             raise ValueError('invalid network parameters')
