@@ -103,21 +103,14 @@ class VariationalDecoder(_nn.Module):
 
 
 class AutoEncoder(_nn.Module):
-    def __init__(self, encoder_params: _Params, decoder_params: _Params, auto_shape=False, with_mlp=True):
+    def __init__(self, encoder_params: _Params, decoder_params: _Params, with_mlp=True):
         """
         :param encoder_params:
         :param decoder_params:
-        :param auto_shape:
-            automatically computes the value of decoder input fmap shape (conv only)
         """
         super().__init__()
 
         self.encoder = Encoder(encoder_params, with_mlp=with_mlp)
-        if auto_shape and isinstance(decoder_params.net_params, _CNNParams):
-            decoder_params = decoder_params._replace(
-                net_params=decoder_params.net_params._replace(
-                    shape=self.encoder.fmap_shape)
-            )
         self.decoder = Decoder(decoder_params, with_mlp=with_mlp)
 
     def forward(self, x):
@@ -132,21 +125,14 @@ class AutoEncoder(_nn.Module):
 class VariationalAutoEncoder(_nn.Module):
     metric_names = ['Reconstruct Loss', 'KL Divergence']
 
-    def __init__(self, encoder_params: _Params, decoder_params: _Params, auto_shape=False,
-                 r_factor=1000, with_mlp=True):
+    def __init__(self, encoder_params: _Params, decoder_params: _Params, r_factor=1000, with_mlp=True):
         """
         :param encoder_params:
         :param decoder_params:
-        :param auto_shape: automatically computes the value of decoder input fmap shape
         """
         super().__init__()
 
         self.encoder = VariationalEncoder(encoder_params, with_mlp)
-        if auto_shape and isinstance(decoder_params.net_params, _CNNParams):
-            decoder_params = decoder_params._replace(
-                net_params=decoder_params.net_params._replace(
-                    shape=self.encoder.fmap_shape)
-            )
         self.decoder = VariationalDecoder(decoder_params, with_mlp)
 
         self.r_factor = r_factor
