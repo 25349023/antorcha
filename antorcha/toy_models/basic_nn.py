@@ -2,7 +2,7 @@ import warnings
 
 from torch import nn as _nn
 
-from . import BasicNNParams as _BasicNNParams, MLPParams as _MLPParams
+from . import BasicNNParams as _BasicNNParams
 from ..layers import AutoConv2d as _AConv2d, AutoConvTranspose2d as _AConvT2d, AutoLinear as _ALinear
 from ..layers.util import sequential_forward as _seq_forward
 from ..toy_models import util as _util, param as _param

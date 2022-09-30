@@ -3,8 +3,8 @@ import warnings
 import torch as _torch
 from torch import nn as _nn
 
-from .basic_nn import _network_selector
-from .param import CNNParams as _CNNParams, CoderParams as _Params, MLPParams as _MLPParams
+from .basic_nn import _network_selector, _prepare_dense
+from .param import CoderParams as _Params, _get_conv_type_from_params
 from .util import flatten_length as _flatten_length
 
 
@@ -20,11 +20,6 @@ class Encoder(_nn.Module):
         self.encoding_network = _network_selector(params.net_params)
         self.out_shape = self.encoding_network.out_shape
 
-        if params.z_dim not in (-1, self.out_shape):
-            warnings.warn('The actual output dimension does not match '
-                          'the z_dim specified by the CoderParams.',
-                          RuntimeWarning, stacklevel=2)
-
     def forward(self, x):
         x = self.encoding_network(x)
         return x
@@ -39,8 +34,8 @@ class Decoder(_nn.Module):
         if with_mlp and len(params.net_params) != 2:
             raise ValueError('CNNWithMLP requires two sets of network params, but only one found')
 
-        # [TODO] add support to upsampling Decoder
-        self.decoding_network = _network_selector(params.net_params, conv_type='transposed')
+        conv_type = _get_conv_type_from_params(params)
+        self.decoding_network = _network_selector(params.net_params, conv_type)
 
     def forward(self, x):
         x = self.decoding_network(x)
@@ -83,20 +78,12 @@ class VariationalDecoder(_nn.Module):
     def __init__(self, params: _Params, with_mlp=True):
         super().__init__()
 
-        self.fmap_shape = ()
-        match params.net_params:
-            case (_MLPParams() as p) | (_MLPParams() as p, _):
-                self.dense = _nn.Linear(params.z_dim, p.in_feature)
-            case _CNNParams() as p:
-                self.dense = _nn.Linear(params.z_dim, p.shape ** 2 * p.in_channel)
-                self.fmap_shape = (p.in_channel, p.shape, p.shape)
-
+        self.dense, self.fmap_shape = _prepare_dense(params.z_dim, params.net_params)
         self.decoding_network = Decoder(params, with_mlp=with_mlp)
 
     def forward(self, x):
         x = self.dense(x)
-        if self.fmap_shape:
-            x = x.reshape((-1, *self.fmap_shape))
+        x = x.reshape((-1, *self.fmap_shape))
         x = self.decoding_network(x)
         return x
 
@@ -104,10 +91,16 @@ class VariationalDecoder(_nn.Module):
 class AutoEncoder(_nn.Module):
     def __init__(self, encoder_params: _Params, decoder_params: _Params, with_mlp=True):
         """
-        :param encoder_params:
-        :param decoder_params:
+        Vanilla AutoEncoder architecture.
+
+        :param encoder_params: the parameter settings of the encoder, with z_dim ignored
+        :param decoder_params: the parameter settings of the encoder
         """
         super().__init__()
+
+        if encoder_params.z_dim != -1:
+            warnings.warn('the z_dim parameter of the encoder is ignored in the AutoEncoder, '
+                          'set z_dim to -1 to supress this warning', stacklevel=2)
 
         self.encoder = Encoder(encoder_params, with_mlp=with_mlp)
         self.decoder = Decoder(decoder_params, with_mlp=with_mlp)

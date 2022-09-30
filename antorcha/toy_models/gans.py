@@ -5,6 +5,7 @@ from torch import nn as _nn
 
 from . import basic_nn as _basic_nn, util as _util, param as _param
 from .basic_nn import _network_selector, _prepare_dense
+from .param import _get_conv_type_from_params
 
 
 class Generator(_nn.Module):
@@ -13,13 +14,8 @@ class Generator(_nn.Module):
 
         self.dense, self.gen_in_shape = _prepare_dense(params.z_dim, params.net_params)
 
-        conv_type = 'transposed'
-        match params.net_params:
-            case (_param.CNNParams(up_sampling=u) |
-                  [_, _param.CNNParams(up_sampling=u)]) if u is not None:
-                conv_type = 'upsampling'
-
-        self.generating_network = _network_selector(params.net_params, conv_type=conv_type)
+        conv_type = _get_conv_type_from_params(params.net_params)
+        self.generating_network = _network_selector(params.net_params, conv_type)
         self.out_shape = params.out_shape
 
     def forward(self, z):

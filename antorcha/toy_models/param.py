@@ -110,3 +110,12 @@ def _symmetric_params_cnn_mlp(net_p: BasicNNParams, mode='transposed'):
         mlp_p = mlp_p._replace(in_feature=_util.flatten_length(shape))
         return (_symmetric_params_mlp(mlp_p),
                 _symmetric_params_cnn(cnn_p))
+
+
+def _get_conv_type_from_params(params: BasicNNParams):
+    conv_type = 'transposed'
+    match params:
+        case (CNNParams(up_sampling=u) |
+              [_, CNNParams(up_sampling=u)]) if u is not None:
+            conv_type = 'upsampling'
+    return conv_type
