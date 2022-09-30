@@ -42,6 +42,7 @@ class CoderParams(_NamedTuple):
 class GeneratorParams(_NamedTuple):
     net_params: BasicNNParams
     z_dim: int
+    out_shape: tuple[int, ...]
 
 
 class GANParams(_NamedTuple):

@@ -4,24 +4,29 @@ import torch as _torch
 from torch import nn as _nn
 
 from . import basic_nn as _basic_nn, util as _util, param as _param
+from .basic_nn import _network_selector, _prepare_dense
 
 
 class Generator(_nn.Module):
     def __init__(self, params: _param.GeneratorParams):
         super().__init__()
-        self.in_channel = params.net_params.in_channel
-        self.fmap_shape = params.net_params.shape
 
-        self.dense = _nn.Linear(params.z_dim, self.fmap_shape ** 2 * self.in_channel)
+        self.dense, self.gen_in_shape = _prepare_dense(params.z_dim, params.net_params)
 
-        self.generating_network = _basic_nn.UpSamplingCNN(params.net_params)
+        conv_type = 'transposed'
+        match params.net_params:
+            case (_param.CNNParams(up_sampling=u) |
+                  [_, _param.CNNParams(up_sampling=u)]) if u is not None:
+                conv_type = 'upsampling'
 
-        self.out_shape = self.generating_network.out_shape
+        self.generating_network = _network_selector(params.net_params, conv_type=conv_type)
+        self.out_shape = params.out_shape
 
     def forward(self, z):
         x = self.dense(z)
-        x = x.reshape((-1, self.in_channel, self.fmap_shape, self.fmap_shape))
+        x = x.reshape((-1, *self.gen_in_shape))
         img = self.generating_network(x)
+        img = img.reshape((-1, *self.out_shape))
         return img
 
 
