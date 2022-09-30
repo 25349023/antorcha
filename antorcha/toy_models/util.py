@@ -18,7 +18,7 @@ def estimate_conv2d_size(in_size: int, strides: list[int] = None,
     return in_size
 
 
-def flatten_length(shape: tuple) -> int:
+def flatten_length(shape: tuple[int, ...]) -> int:
     return _funct.reduce(_opr.mul, shape)
 
 

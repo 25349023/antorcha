@@ -49,6 +49,8 @@ class CNN(_nn.Module):
         The bad settings for the last layer defaults to be the same as previous layers
         """
         super().__init__()
+
+        # [TODO] Do we still need the fmap_shape to be the publicly accessible member? (Same for other models)
         self.fmap_shape = _util.estimate_conv2d_size(params.shape, params.strides)
 
         ic = params.in_channel
@@ -100,7 +102,7 @@ class TransposedCNN(_nn.Module):
             ic = oc
 
         s = _util.estimate_conv2d_size(params.shape, up_sample=params.strides)
-        self.out_shape = [params.out_channels[-1], s, s]
+        self.out_shape = (params.out_channels[-1], s, s)
 
 
 @_seq_forward
@@ -137,7 +139,7 @@ class UpSamplingCNN(_nn.Module):
             ic = oc
 
         s = _util.estimate_conv2d_size(params.shape, params.strides, params.up_sampling)
-        self.out_shape = (s, s, params.out_channels[-1])
+        self.out_shape = (params.out_channels[-1], s, s)
 
 
 @_seq_forward
@@ -169,42 +171,57 @@ class CNNWithMLP(_nn.Module):
         self.out_shape = (mlp_params.out_features[-1],)
 
 
-class MLPWithTCNN(_nn.Module):
-    def __init__(self, mlp_params: _param.MLPParams, tcnn_params: _param.CNNParams):
+class MLPWithCNN(_nn.Module):
+    def __init__(self, mlp_params: _param.MLPParams, cnn_params: _param.CNNParams, conv_type='transposed'):
         """
-        Construct a network that contains MLP and Transposed CNN
+        Construct a network that contains MLP + (Transposed CNN or UpSampling CNN)
 
         The bad settings for the last layer default to
-        those in MLP and TransposedCNN respectively
+        those in MLP, TransposedCNN, and UpSamplingCNN respectively
         """
 
         super().__init__()
 
         self.mlp = MLP(mlp_params)
-        self.tcnn_in_shape = (tcnn_params.in_channel,) + (tcnn_params.shape,) * 2
-        self.tcnn = TransposedCNN(tcnn_params)
+        self.cnn_in_shape = (cnn_params.in_channel, cnn_params.shape, cnn_params.shape)
 
-        s = _util.estimate_conv2d_size(tcnn_params.shape, up_sample=tcnn_params.strides)
-        self.out_shape = (tcnn_params.out_channels[-1], s, s)
+        if conv_type not in ('transposed', 'upsampling'):
+            raise ValueError(f'conv_type should be either "transposed" or "upsampling", but got {conv_type}')
+        if conv_type == 'transposed':
+            self.cnn = TransposedCNN(cnn_params)
+        else:
+            self.cnn = UpSamplingCNN(cnn_params)
+        self.out_shape = self.cnn.out_shape
 
     def forward(self, x):
         x = self.mlp(x)
-        x = x.reshape((-1, *self.tcnn_in_shape))
-        x = self.tcnn(x)
+        x = x.reshape((-1, *self.cnn_in_shape))
+        x = self.cnn(x)
         return x
 
 
 def _network_selector(params: _maybe_pair[_BasicNNParams], conv_type='normal'):
-    if isinstance(params, _MLPParams):
-        return MLP(params)
+    match params:
+        case _param.MLPParams():
+            return MLP(params)
+        case _param.CNNParams():
+            if conv_type == 'normal':
+                return CNN(params)
+            elif conv_type == 'transposed':
+                return TransposedCNN(params)
+            elif conv_type == 'upsampling':
+                return UpSamplingCNN(params)
+        case [_param.CNNParams(), _param.MLPParams()]:
+            return CNNWithMLP(*params)
+        case [_param.MLPParams(), _param.CNNParams()]:
+            return MLPWithCNN(*params, conv_type=conv_type)
 
-    if conv_type == 'normal':
-        return CNN(params)
-    elif conv_type == 'cnn_mlp':
-        return CNNWithMLP(*params)
-    elif conv_type == 'transposed':
-        return TransposedCNN(params)
-    elif conv_type == 'mlp_transposed':
-        return MLPWithTCNN(*params)
-    elif conv_type == 'upsampling':
-        return UpSamplingCNN(params)
+
+def _prepare_dense(in_features, params: _param.BasicNNParams) -> tuple[_nn.Linear, tuple[int, ...]]:
+    match params:
+        case (_param.MLPParams(in_feature=f) |
+              [_param.MLPParams(in_feature=f), _]):
+            return _nn.Linear(in_features, f), (f,)
+        case (_param.CNNParams(in_channel=ch, shape=s) |
+              [_param.CNNParams(in_channel=ch, shape=s), _]):
+            return _nn.Linear(in_features, ch * s * s), (ch, s, s)

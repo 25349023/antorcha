@@ -17,8 +17,7 @@ class Encoder(_nn.Module):
         if with_mlp and len(params.net_params) != 2:
             raise ValueError('CNNWithMLP requires two sets of network params, but only 1 found')
 
-        conv_type = 'cnn_mlp' if with_mlp else 'normal'
-        self.encoding_network = _network_selector(params.net_params, conv_type=conv_type)
+        self.encoding_network = _network_selector(params.net_params)
         self.out_shape = self.encoding_network.out_shape
 
         if params.z_dim not in (-1, self.out_shape):
@@ -40,8 +39,8 @@ class Decoder(_nn.Module):
         if with_mlp and len(params.net_params) != 2:
             raise ValueError('CNNWithMLP requires two sets of network params, but only one found')
 
-        conv_type = 'mlp_transposed' if with_mlp else 'transposed'
-        self.decoding_network = _network_selector(params.net_params, conv_type=conv_type)
+        # [TODO] add support to upsampling Decoder
+        self.decoding_network = _network_selector(params.net_params, conv_type='transposed')
 
     def forward(self, x):
         x = self.decoding_network(x)
