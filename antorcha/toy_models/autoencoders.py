@@ -78,12 +78,12 @@ class VariationalDecoder(_nn.Module):
     def __init__(self, params: _Params, with_mlp=True):
         super().__init__()
 
-        self.dense, self.fmap_shape = _prepare_dense(params.z_dim, params.net_params)
+        self.dense, self.dec_in_shape = _prepare_dense(params.z_dim, params.net_params)
         self.decoding_network = Decoder(params, with_mlp=with_mlp)
 
     def forward(self, x):
         x = self.dense(x)
-        x = x.reshape((-1, *self.fmap_shape))
+        x = x.reshape((-1, *self.dec_in_shape))
         x = self.decoding_network(x)
         return x
 

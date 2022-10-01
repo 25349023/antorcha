@@ -50,9 +50,6 @@ class CNN(_nn.Module):
         """
         super().__init__()
 
-        # [TODO] Do we still need the fmap_shape to be the publicly accessible member? (Same for other models)
-        self.fmap_shape = _util.estimate_conv2d_size(params.shape, params.strides)
-
         ic = params.in_channel
         bad = params.bad_setting
         last_bad = params.last_layer_bad or bad
@@ -69,7 +66,8 @@ class CNN(_nn.Module):
             self.layers.append(conv)
             ic = oc
 
-        self.out_shape = (params.out_channels[-1], self.fmap_shape, self.fmap_shape)
+        fmap_shape = _util.estimate_conv2d_size(params.shape, params.strides)
+        self.out_shape = (params.out_channels[-1], fmap_shape, fmap_shape)
 
 
 @_seq_forward
@@ -154,10 +152,9 @@ class CNNWithMLP(_nn.Module):
         super().__init__()
         self.in_channel = cnn_params.in_channel
         self.cnn = CNN(cnn_params)
-        self.fmap_shape = self.cnn.fmap_shape
 
         self.flatten = _nn.Flatten()
-        mlp_in_feat = self.fmap_shape ** 2 * cnn_params.out_channels[-1]
+        mlp_in_feat = _util.flatten_length(self.cnn.out_shape)
 
         if mlp_params.in_feature not in (-1, mlp_in_feat):
             warnings.warn('MLP in_feature does not match the output feature of cnn, '
