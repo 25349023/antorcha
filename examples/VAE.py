@@ -33,10 +33,15 @@ if __name__ == '__main__':
     test_loader = PreprocessedDataLoader(test_loader, to_gpu)
 
     encoder_params = toy.CoderParams(
-        net_params=toy.CNNParams(
-            in_channel=1, out_channels=[32, 64, 64, 64], shape=28,
-            kernels=[3, 3, 3, 3], strides=[1, 2, 2, 1],
-            bad_setting=toy.BADSettings(activation=nn.LeakyReLU)
+        net_params=(
+            toy.CNNParams(
+                in_channel=1, out_channels=[32, 64, 64, 64], shape=28,
+                kernels=[3, 3, 3, 3], strides=[1, 2, 2, 1],
+                bad_setting=toy.BADSettings(activation=nn.LeakyReLU)
+            ),
+            toy.MLPParams(
+                in_feature=-1, out_features=[16], bad_setting=toy.BADSettings()
+            )
         ),
         z_dim=2
     )

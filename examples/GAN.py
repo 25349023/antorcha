@@ -1,4 +1,4 @@
-from matplotlib import pyplot as plt
+import matplotlib.pyplot as plt
 from torch import nn
 from torch.distributions.transforms import AffineTransform
 from torch.utils.data import DataLoader
@@ -42,7 +42,8 @@ if __name__ == '__main__':
             bad_setting=BADSettings(batchnorm=True, activation=nn.ReLU),
             last_layer_bad=BADSettings(activation=nn.Tanh),
         ),
-        z_dim=100
+        z_dim=100,
+        out_shape=(1, 28, 28)
     )
 
     dp = CNNParams(
@@ -59,6 +60,7 @@ if __name__ == '__main__':
 
     gan = gans.GAN(params)
     gan.device = 'cuda'
+    print(gan, '\n')
 
     fit_adv(gan, train_loader, test_loader, epochs=20)
 
