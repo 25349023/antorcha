@@ -56,7 +56,7 @@ if __name__ == '__main__':
     )
     decoder_params = toy.symmetric_params(encoder_params)
 
-    auto_encoder = toy_ae.AutoEncoder(encoder_params, decoder_params, with_mlp=False)
+    auto_encoder = toy_ae.AutoEncoder(encoder_params, decoder_params)
     print(auto_encoder.to('cuda').train(), '\n')
 
     loss_fn = nn.MSELoss()

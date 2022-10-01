@@ -52,7 +52,7 @@ if __name__ == '__main__':
 
     decoder_params = toy.symmetric_params(encoder_params)
 
-    vae = toy_ae.VariationalAutoEncoder(encoder_params, decoder_params, r_factor=800, with_mlp=True)
+    vae = toy_ae.VariationalAutoEncoder(encoder_params, decoder_params, r_factor=800)
     print(vae.to('cuda').train(), '\n')
 
     r_loss_fn = nn.MSELoss()
