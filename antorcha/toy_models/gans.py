@@ -9,6 +9,14 @@ from .param import _get_conv_type_from_params
 
 
 class Generator(_nn.Module):
+    """
+    Generator for GANs, supported architectures are:
+        - MLP
+        - TransposedCNN
+        - UpsamplingCNN
+        - MLPWithCNN
+    """
+
     def __init__(self, params: _param.GeneratorParams):
         super().__init__()
 
@@ -27,6 +35,13 @@ class Generator(_nn.Module):
 
 
 class Discriminator(_nn.Module):
+    """
+    Discriminator for GANs, supported architectures are:
+        - MLP
+        - CNN
+        - CNNWithMLP
+    """
+
     def __init__(self, params: _param.BasicNNParams):
         super().__init__()
         self.in_shape = _get_input_shape(params)
@@ -140,6 +155,13 @@ class GAN(_nn.Module):
 
 
 class WCritic(_nn.Module):
+    """
+    Critic for WGANs, supported architectures are:
+        - MLP
+        - CNN
+        - CNNWithMLP
+    """
+
     def __init__(self, params: _param.BasicNNParams):
         super().__init__()
         self.in_shape = _get_input_shape(params)

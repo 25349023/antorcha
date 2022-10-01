@@ -171,7 +171,7 @@ class CNNWithMLP(_nn.Module):
 class MLPWithCNN(_nn.Module):
     def __init__(self, mlp_params: _param.MLPParams, cnn_params: _param.CNNParams, conv_type='transposed'):
         """
-        Construct a network that contains MLP + (Transposed CNN or UpSampling CNN)
+        Construct a network that contains MLP + one of Transposed CNN, UpSampling CNN
 
         The bad settings for the last layer default to
         those in MLP, TransposedCNN, and UpSamplingCNN respectively
