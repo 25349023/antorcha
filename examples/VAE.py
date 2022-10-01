@@ -3,10 +3,6 @@ from torch import nn
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 
-import matplotlib
-matplotlib.use('TkAgg')
-import matplotlib.pyplot as plt
-
 import antorcha.toy_models.autoencoders as toy_ae
 from antorcha import toy_models as toy
 from antorcha.data.loaders import PreprocessedDataLoader
@@ -75,4 +71,3 @@ if __name__ == '__main__':
     # =====================
     visualize_latent_space_dist(vae.encoder, test_loader, 'VAE')
     plot_interpolation(vae.decoder, 2, 28)
-    plt.show()

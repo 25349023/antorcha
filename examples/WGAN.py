@@ -80,5 +80,5 @@ if __name__ == '__main__':
                 ax[i, j].imshow(1 - real[(i // 2) * 8 + j], cmap='gray')
     fig.show()
 
-    # torch.save(wgan, 'wgan_minst.pth')
-    # torch.save(wgan.state_dict(), 'wgan_minst_weights.pth')
+    # torch.save(wgan, 'wgan_mnist.pth')
+    # torch.save(wgan.state_dict(), 'wgan_mnist_weights.pth')
