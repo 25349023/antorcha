@@ -214,6 +214,18 @@ def _network_selector(params: _maybe_pair[_BasicNNParams], conv_type='normal'):
             return MLPWithCNN(*params, conv_type=conv_type)
 
 
+def _get_input_shape(params: _param.BasicNNParams):
+    match params:
+        case (_param.MLPParams(in_feature=f) |
+              [_param.MLPParams(in_feature=f), _]):
+            return f,
+        case (_param.CNNParams(in_channel=ch, shape=s) |
+              [_param.CNNParams(in_channel=ch, shape=s), _]):
+            return ch, s, s
+
+
+# though we can reuse _get_input_shape in this function,
+# it is less efficient due to the repeated pattern matching process
 def _prepare_dense(in_features, params: _param.BasicNNParams) -> tuple[_nn.Linear, tuple[int, ...]]:
     match params:
         case (_param.MLPParams(in_feature=f) |

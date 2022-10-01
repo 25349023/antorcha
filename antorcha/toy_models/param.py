@@ -47,7 +47,7 @@ class GeneratorParams(_NamedTuple):
 
 class GANParams(_NamedTuple):
     gen_params: GeneratorParams
-    dis_params: CNNParams
+    dis_params: BasicNNParams
     gen_learning_rate: float
     dis_learning_rate: float
 

@@ -3,8 +3,8 @@ from warnings import warn as _warn
 import torch as _torch
 from torch import nn as _nn
 
-from . import basic_nn as _basic_nn, util as _util, param as _param
-from .basic_nn import _network_selector, _prepare_dense
+from . import util as _util, param as _param
+from .basic_nn import _network_selector, _prepare_dense, _get_input_shape
 from .param import _get_conv_type_from_params
 
 
@@ -27,16 +27,22 @@ class Generator(_nn.Module):
 
 
 class Discriminator(_nn.Module):
-    def __init__(self, params: _param.CNNParams):
+    def __init__(self, params: _param.BasicNNParams):
         super().__init__()
-        self.in_channel = params.in_channel
+        self.in_shape = _get_input_shape(params)
 
-        mlp_params = _param.MLPParams(in_feature=-1, out_features=[1], bad_setting=_param.BADSettings())
-        self.discriminating_network = _basic_nn.CNNWithMLP(params, mlp_params)
+        self.discriminating_network = _network_selector(params)
+        self.flatten = _nn.Flatten()
+        self.dense = _nn.Linear(_util.flatten_length(self.discriminating_network.out_shape), 1)
         self.activation = _nn.Sigmoid()
 
+        self.out_shape = (1,)
+
     def forward(self, x):
+        x = x.reshape((-1, *self.in_shape))
         x = self.discriminating_network(x)
+        x = self.flatten(x)
+        x = self.dense(x)
         x = self.activation(x)
         return x
 
@@ -134,15 +140,19 @@ class GAN(_nn.Module):
 
 
 class WCritic(_nn.Module):
-    def __init__(self, params: _param.CNNParams):
+    def __init__(self, params: _param.BasicNNParams):
         super().__init__()
-        self.in_channel = params.in_channel
+        self.in_shape = _get_input_shape(params)
 
-        mlp_params = _param.MLPParams(in_feature=-1, out_features=[1], bad_setting=_param.BADSettings())
-        self.critic_network = _basic_nn.CNNWithMLP(params, mlp_params)
+        self.critic_network = _network_selector(params)
+        self.flatten = _nn.Flatten()
+        self.dense = _nn.Linear(_util.flatten_length(self.critic_network.out_shape), 1)
 
     def forward(self, x):
+        x = x.reshape((-1, *self.in_shape))
         x = self.critic_network(x)
+        x = self.flatten(x)
+        x = self.dense(x)
         return x
 
 
