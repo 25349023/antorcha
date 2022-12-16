@@ -8,4 +8,5 @@ __pycache__/
 /0*.py
 /0*.ipynb
 /test.py
+*.pt
 *.pth
