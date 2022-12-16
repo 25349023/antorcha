@@ -40,11 +40,11 @@ def test_one_epoch(
             loss = model.loss(*loss_fns, pred, y)
             losses.append(loss.item())
             if metrics:
-                model.metric.accumulate(pred.cpu().numpy(), y.cpu().numpy())
+                model.metric.accumulate_batch(pred.cpu().numpy(), y.cpu().numpy())
 
     metric_results = model.metric.results() if metrics else ()
 
-    return _np.array(losses).mean(), *metric_results
+    return _np.array(losses).mean(), metric_results
 
 
 def fit(
@@ -66,7 +66,7 @@ def fit(
         model.train()
         train_loss = train_one_epoch(model, train_ld, loss_fn, optim)
         model.eval()
-        test_loss, *metric_results = test_one_epoch(model, test_ld, loss_fn, metrics)
+        test_loss, metric_results = test_one_epoch(model, test_ld, loss_fn, metrics)
 
         print(f'Epoch {i:>2}: training loss = {train_loss:.6f}, testing loss = {test_loss:.6f}')
         if metric_results:
