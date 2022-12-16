@@ -31,19 +31,23 @@ def test_one_epoch(
         loss_fns: list,
         metrics=False
 ):
-    losses, metric_results = [], []
+    losses = []
     with _torch.no_grad():
+        if metrics:
+            model.metric.reset()
         for x, y in _tqdm.tqdm(dataset, file=_sys.stdout, desc='Testing... ', leave=False):
             pred: _torch.Tensor = model(x)
             loss = model.loss(*loss_fns, pred, y)
             losses.append(loss.item())
             if metrics:
-                metric_results.append(model.metrics(pred, y))
+                model.metric.accumulate(pred.cpu().numpy(), y.cpu().numpy())
 
-    if metrics:
+    # if metrics:
         # transposing the result matrix
-        metric_results = zip(*metric_results)
-        metric_results = tuple(_np.array(m).mean() for m in metric_results)
+        # metric_results = zip(*metric_results)
+        # pass
+
+    metric_results = model.metric.results() if metrics else ()
 
     return _np.array(losses).mean(), *metric_results
 
@@ -67,7 +71,7 @@ def fit(
         print(f'Epoch {i:>2}: training loss = {train_loss:.6f}, testing loss = {test_loss:.6f}')
         if metric_results:
             m_strs = [f'\t| {m} = {metric_results[i]:.6f}'
-                      for i, m in enumerate(model.metric_names)]
+                      for i, m in enumerate(model.metric.metric_names)]
             print('\n'.join(m_strs), end='\n\n')
 
         if scheduler is not None:

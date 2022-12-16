@@ -6,7 +6,7 @@ from torchvision import datasets, transforms
 from antorcha.data.loaders import PreprocessedDataLoader
 from antorcha.toy_models import CNNParams, BADSettings
 from antorcha.toy_models.basic_nn import CNN
-from antorcha.train import trainer
+from antorcha.train import trainer, metric
 from antorcha.utils import fix_ssl_download
 
 
@@ -15,8 +15,6 @@ def to_gpu(*args):
 
 
 class Model(nn.Module):
-    metric_names = ['Accuracy']
-
     def __init__(self):
         super().__init__()
         self.flatten = nn.Flatten()
@@ -34,6 +32,8 @@ class Model(nn.Module):
             nn.Linear(128, 10),
         )
 
+        self.metric = metric.Accuracy()
+
     def forward(self, x):
         x = self.conv_layers(x)
         x = self.flatten(x)
@@ -42,9 +42,6 @@ class Model(nn.Module):
 
     def loss(self, loss, pred, gt):
         return loss(pred, gt)
-
-    def metrics(self, pred: torch.Tensor, gt: torch.Tensor):
-        return (pred.argmax(dim=1) == gt).sum().item() / pred.size(0),
 
 
 if __name__ == '__main__':
