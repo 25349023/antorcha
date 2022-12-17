@@ -45,12 +45,12 @@ def test_adv_one_epoch(
     return tuple(_np.array(loss).mean() for loss in losses if loss), metric_results
 
 
-# [TODO] adding support for lr scheduler
 def fit_adv(
         model,
         train_ld: _Iterable,
         test_ld: _Iterable,
         metrics=False,
+        schedulers=None,
         epochs=30
 ):
     def gen_loss_str(losses, precision=6):
@@ -77,6 +77,9 @@ def fit_adv(
 
         if metric_results:
             print(gen_results_str(metric_results, model.metric.metric_names), end='\n')
-
         print()
+
+        if schedulers is not None:
+            for scheduler in schedulers:
+                scheduler.step()
 
