@@ -63,7 +63,7 @@ if __name__ == '__main__':
     wgan = gans.WGAN(params)
     wgan.device = 'cuda'
 
-    fit_adv(wgan, train_loader, test_loader, epochs=20)
+    fit_adv(wgan, train_loader, test_loader, metrics=True, epochs=20)
 
     img = wgan.generate_images(80).reshape(80, 28, 28, 1)
 

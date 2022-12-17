@@ -12,7 +12,7 @@ class Metric(_abc.ABC):
         """Reset the metric internal state"""
 
     @_abc.abstractmethod
-    def accumulate_batch(self, pred, gt):
+    def accumulate_batch(self, *args):
         """Accumulate the metric result w.r.t. the prediction and ground truth"""
 
     @_abc.abstractmethod
@@ -31,9 +31,9 @@ class Collection(Metric):
         for metric in self.metrics:
             metric.reset()
 
-    def accumulate_batch(self, pred, gt):
+    def accumulate_batch(self, *args):
         for metric in self.metrics:
-            metric.accumulate_batch(pred, gt)
+            metric.accumulate_batch(*args)
 
     def results(self) -> tuple:
         return tuple(res for m in self.metrics for res in m.results())
@@ -48,7 +48,8 @@ class Accuracy(Metric):
     def reset(self):
         self.batch_results = []
 
-    def accumulate_batch(self, pred: _np.ndarray, gt: _np.ndarray):
+    def accumulate_batch(self, *args):
+        pred, gt = args
         self.batch_results.append((pred.argmax(axis=1) == gt).mean())
 
     def results(self) -> tuple:
@@ -64,7 +65,7 @@ class KLDivergence(Metric):
         """
         Initialize KL Divergence metrics with the given distributional encoder
 
-        :param dist: target gaussian distribution, it should have two attributes: mu and log_var
+        :param dist: target gaussian distribution, it should have two attributes: `mu` and `log_var`
         """
         self.batch_results = None
         self.dist = dist
@@ -77,8 +78,30 @@ class KLDivergence(Metric):
     def reset(self):
         self.batch_results = []
 
-    def accumulate_batch(self, pred: _np.ndarray, gt: _np.ndarray):
+    def accumulate_batch(self, *args):
         self.batch_results.append(self.kl_loss_fn(self.dist.mu, self.dist.log_var).item())
+
+    def results(self) -> tuple:
+        return _np.array(self.batch_results).mean(),
+
+
+class WassersteinDistance(Metric):
+    metric_names = ['Wasserstein Distance']
+
+    def __init__(self, w_approx):
+        """
+        Initialize Wasserstein Distance metrics with the given distributional encoder
+
+        :param w_approx: model that approximates the W Distance, it should have `w_dist` attribute
+        """
+        self.batch_results = None
+        self.w_approx = w_approx
+
+    def reset(self):
+        self.batch_results = []
+
+    def accumulate_batch(self, *args):
+        self.batch_results.append(self.w_approx.w_dist)
 
     def results(self) -> tuple:
         return _np.array(self.batch_results).mean(),
