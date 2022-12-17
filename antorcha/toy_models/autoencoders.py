@@ -6,6 +6,7 @@ from torch import nn as _nn
 from .basic_nn import _network_selector, _prepare_dense
 from .param import CoderParams as _Params, _get_conv_type_from_params
 from .util import flatten_length as _flatten_length
+from ..train import metric
 
 
 class Encoder(_nn.Module):
@@ -105,8 +106,6 @@ class AutoEncoder(_nn.Module):
 
 
 class VariationalAutoEncoder(_nn.Module):
-    metric_names = ['Reconstruct Loss', 'KL Divergence']
-
     def __init__(self, encoder_params: _Params, decoder_params: _Params, r_factor=1000):
         """
         :param encoder_params:
@@ -118,23 +117,15 @@ class VariationalAutoEncoder(_nn.Module):
         self.decoder = VariationalDecoder(decoder_params)
 
         self.r_factor = r_factor
-        self.r_loss = _torch.tensor(0.0)
-        self.kl_div = _torch.tensor(0.0)
+
+        self.metric = metric.KLDivergence(self.encoder)
 
     def forward(self, x):
         z = self.encoder(x)
         x_hat = self.decoder(z)
         return x_hat
 
-    @staticmethod
-    def kl_loss_fn(mu, log_var):
-        kl = 0.5 * _torch.sum(mu ** 2 + log_var.exp() - 1 - log_var, dim=1)
-        return _torch.mean(kl)
-
     def loss(self, r_loss, pred, gt):
-        self.r_loss = r_loss(pred, gt)
-        self.kl_div = self.kl_loss_fn(self.encoder.mu, self.encoder.log_var)
-        return self.r_factor * self.r_loss + self.kl_div
-
-    def metrics(self, pred, gt):
-        return [self.r_loss.item(), self.kl_div.item()]
+        r_loss = r_loss(pred, gt)
+        kl_div = metric.KLDivergence.kl_loss_fn(self.encoder.mu, self.encoder.log_var)
+        return self.r_factor * r_loss + kl_div

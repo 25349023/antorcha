@@ -31,21 +31,20 @@ def test_one_epoch(
         loss_fns: list,
         metrics=False
 ):
-    losses, metric_results = [], []
+    losses = []
     with _torch.no_grad():
+        if metrics:
+            model.metric.reset()
         for x, y in _tqdm.tqdm(dataset, file=_sys.stdout, desc='Testing... ', leave=False):
             pred: _torch.Tensor = model(x)
             loss = model.loss(*loss_fns, pred, y)
             losses.append(loss.item())
             if metrics:
-                metric_results.append(model.metrics(pred, y))
+                model.metric.accumulate_batch(pred.cpu().numpy(), y.cpu().numpy())
 
-    if metrics:
-        # transposing the result matrix
-        metric_results = zip(*metric_results)
-        metric_results = tuple(_np.array(m).mean() for m in metric_results)
+    metric_results = model.metric.results() if metrics else ()
 
-    return _np.array(losses).mean(), *metric_results
+    return _np.array(losses).mean(), metric_results
 
 
 def fit(
@@ -58,17 +57,20 @@ def fit(
         scheduler=None,
         epochs=20,
 ):
+    def gen_results_str(results, result_names, precision=6):
+        res_strs = [f'\t| {m} = {results[i]:.{precision}f}'
+                    for i, m in enumerate(result_names)]
+        return '\n'.join(res_strs)
+
     for i in range(epochs):
         model.train()
         train_loss = train_one_epoch(model, train_ld, loss_fn, optim)
         model.eval()
-        test_loss, *metric_results = test_one_epoch(model, test_ld, loss_fn, metrics)
+        test_loss, metric_results = test_one_epoch(model, test_ld, loss_fn, metrics)
 
         print(f'Epoch {i:>2}: training loss = {train_loss:.6f}, testing loss = {test_loss:.6f}')
         if metric_results:
-            m_strs = [f'\t| {m} = {metric_results[i]:.6f}'
-                      for i, m in enumerate(model.metric_names)]
-            print('\n'.join(m_strs), end='\n\n')
+            print(gen_results_str(metric_results, model.metric.metric_names), end='\n\n')
 
         if scheduler is not None:
             scheduler.step()

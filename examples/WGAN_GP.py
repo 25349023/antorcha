@@ -63,7 +63,7 @@ if __name__ == '__main__':
     wgan_gp = gans.WGANGP(params)
     wgan_gp.device = 'cuda'
 
-    fit_adv(wgan_gp, train_loader, test_loader, epochs=50)
+    fit_adv(wgan_gp, train_loader, test_loader, metrics=True, epochs=50)
 
     img = wgan_gp.generate_images(80).reshape(80, 28, 28, 1)
 

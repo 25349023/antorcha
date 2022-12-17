@@ -6,6 +6,7 @@ from torch import nn as _nn
 from . import util as _util, param as _param
 from .basic_nn import _network_selector, _prepare_dense, _get_input_shape
 from .param import _get_conv_type_from_params
+from ..train import metric
 
 
 class Generator(_nn.Module):
@@ -151,7 +152,7 @@ class GAN(_nn.Module):
         d_loss = self.forward_dis(real_imgs, fake_imgs)
         g_loss = self.forward_gen(fake_imgs)
 
-        return d_loss, g_loss
+        return d_loss, g_loss, fake_imgs
 
 
 class WCritic(_nn.Module):
@@ -169,6 +170,8 @@ class WCritic(_nn.Module):
         self.critic_network = _network_selector(params)
         self.flatten = _nn.Flatten()
         self.dense = _nn.Linear(_util.flatten_length(self.critic_network.out_shape), 1)
+
+        self.w_dist = _torch.tensor(0.0)
 
     def forward(self, x):
         x = x.reshape((-1, *self.in_shape))
@@ -195,6 +198,7 @@ class WGAN(_nn.Module):
         self.n_critic = params.n_critic
         self.crtc_weight_threshold = params.crtc_weight_threshold
         self.steps = 1
+        self.metric = metric.WassersteinDistance(self.critic)
 
         self.device = 'cpu'
 
@@ -272,7 +276,9 @@ class WGAN(_nn.Module):
         c_loss = self.forward_crtc(real_imgs, fake_imgs)
         g_loss = self.forward_gen(fake_imgs)
 
-        return c_loss, g_loss
+        self.critic.w_dist = -c_loss.item()
+
+        return c_loss, g_loss, fake_imgs
 
 
 @_util.attach_device_prop
@@ -299,6 +305,7 @@ class WGANGP(_nn.Module):
         self.n_critic = params.n_critic
         self.gp_weight = params.gp_weight
         self.steps = 1
+        self.metric = metric.WassersteinDistance(self.critic)
 
         self.device = 'cpu'
 
@@ -395,4 +402,6 @@ class WGANGP(_nn.Module):
         c_loss, _ = self.forward_crtc(real_imgs, fake_imgs)
         g_loss = self.forward_gen(fake_imgs)
 
-        return c_loss, g_loss
+        self.critic.w_dist = -c_loss.item()
+
+        return c_loss, g_loss, fake_imgs

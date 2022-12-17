@@ -1,15 +1,13 @@
-import torch as _torch
 from torch import nn as _nn
 
 from .basic_nn import CNNWithMLP as _CNNWithMLP
 from .param import BADSettings as _Bad, MLPParams as _MLPParams, CNNParams as _CNNParams
 from ..layers import autopad_conv2d as _autopad_conv2d
+from ..train import metric as _metric
 
 
 class TinyAlexNet(_nn.Module):
     """AlexNet without pooling, dropout, but adding batchnorm for performance"""
-
-    metric_names = ['Accuracy']
 
     def __init__(self, in_shape):
         super().__init__()
@@ -23,6 +21,7 @@ class TinyAlexNet(_nn.Module):
             out_features=[4096, 4096, 10], bad_setting=_Bad(activation=_nn.ReLU)
         )
         self.network = _CNNWithMLP(cnn_param, mlp_param)
+        self.metric = _metric.Accuracy()
 
     def forward(self, x):
         x = self.network(x)
@@ -31,13 +30,8 @@ class TinyAlexNet(_nn.Module):
     def loss(self, loss, pred, gt):
         return loss(pred, gt)
 
-    def metrics(self, pred: _torch.Tensor, gt: _torch.Tensor):
-        return (pred.argmax(dim=1) == gt).sum().item() / pred.size(0),
-
 
 class AlexNet(_nn.Module):
-    metric_names = ['accuracy']
-
     def __init__(self):
         super().__init__()
         self.model = _nn.Sequential(
@@ -64,12 +58,11 @@ class AlexNet(_nn.Module):
             _nn.Linear(4096, 10),
         )
 
+        self.metric = _metric.Accuracy()
+
     def forward(self, x):
         x = self.model(x)
         return x
 
     def loss(self, loss, pred, gt):
         return loss(pred, gt)
-
-    def metrics(self, pred: _torch.Tensor, gt: _torch.Tensor):
-        return (pred.argmax(dim=1) == gt).sum().item() / pred.size(0),
