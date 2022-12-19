@@ -48,8 +48,7 @@ class Accuracy(Metric):
     def reset(self):
         self.batch_results = []
 
-    def accumulate_batch(self, *args):
-        pred, gt = args
+    def accumulate_batch(self, pred, gt):
         self.batch_results.append((pred.argmax(axis=1) == gt).mean())
 
     def results(self) -> tuple:
@@ -105,3 +104,32 @@ class WassersteinDistance(Metric):
 
     def results(self) -> tuple:
         return _np.array(self.batch_results).mean(),
+
+
+class MeanIoU(Metric):
+    metric_names = ['mIoU']
+
+    def __init__(self, num_classes):
+        self.num_classes = num_classes
+        self.intersections = _np.zeros(self.num_classes)
+        self.unions = _np.zeros(self.num_classes)
+
+    def reset(self):
+        self.intersections = _np.zeros(self.num_classes)
+        self.unions = _np.zeros(self.num_classes)
+
+    def accumulate_batch(self, pred, gt):
+        pred_seg = pred.argmax(axis=1)
+
+        for c in range(self.num_classes):
+            pred_idx = pred_seg == c
+            gt_idx = gt == c
+
+            intersection = (pred_idx & gt_idx).sum()
+            union = (pred_idx | gt_idx).sum()
+
+            self.intersections[c] += intersection
+            self.unions[c] += union
+
+    def results(self) -> tuple:
+        return (self.intersections / (self.unions + 1e-15)).mean(),

@@ -3,11 +3,18 @@ import torch as _torch
 from matplotlib import pyplot as _plt
 
 
-def show_images(images, row=4, col=6):
-    fig, ax = _plt.subplots(row, col, figsize=(10, 6))
+def show_images(images, row=4, col=6, transpose=True):
+    transpose_func = 'transpose'
+    if isinstance(images, _torch.Tensor):
+        transpose_func = 'permute'
+
+    fig, ax = _plt.subplots(row, col, figsize=(10, 6), sharex='all', sharey='all')
     for i in range(row):
         for j in range(col):
-            ax[i, j].imshow(images[i * col + j].permute((1, 2, 0)), cmap='gray')
+            img = images[i * col + j]
+            if transpose:
+                img = getattr(img, transpose_func)((1, 2, 0))
+            ax[i, j].imshow(img, cmap='gray')
     fig.show()
 
 
